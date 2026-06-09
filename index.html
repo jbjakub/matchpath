@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MatchPath</title>
+
+  <!--
+    Leaflet.js — the mapping library we use to show the interactive map.
+    We load it from a CDN (a public server), so no installation needed.
+  -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!--
+    Google Fonts — the typefaces that give MatchPath its visual identity.
+    "Barlow Condensed" for headings: athletic, direct, good for data.
+    "Inter" for body text: clean and readable at small sizes.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS
+       These variables define the color palette and fonts.
+       Changing a value here updates it everywhere in the app.
+    ============================================================ */
+    :root {
+      --color-bg:         #0a0e1a;   /* deep navy — the canvas */
+      --color-surface:    #131929;   /* slightly lighter navy — panels */
+      --color-border:     #1e2d45;   /* subtle borders */
+      --color-accent:     #00d4ff;   /* electric cyan — the signature color */
+      --color-accent-dim: #00d4ff22; /* transparent accent for backgrounds */
+      --color-text:       #e8edf5;   /* near-white for primary text */
+      --color-muted:      #6b7fa3;   /* muted blue-grey for secondary text */
+      --color-confirmed:  #00e676;   /* green — confirmed matches */
+      --color-possible:   #ffab40;   /* amber — conditional/possible matches */
+
+      --font-display: 'Barlow Condensed', sans-serif;
+      --font-body:    'Inter', sans-serif;
+    }
+
+    /* ============================================================
+       RESET & BASE
+       Removes browser default spacing and sets the foundation.
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      overflow: hidden; /* prevents page scroll — the app fills the window */
+    }
+
+    /* ============================================================
+       APP SHELL
+       The top-level layout: header + main content area.
+    ============================================================ */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ============================================================
+       HEADER
+       The top bar with the MatchPath logo and nav tabs.
+    ============================================================ */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 52px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      flex-shrink: 0; /* header never shrinks — always full height */
+      z-index: 1000;
+    }
+
+    #logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* The pitch-path icon: a small circle (ball) + line (path) */
+    #logo-icon {
+      width: 28px;
+      height: 28px;
+      position: relative;
+    }
+
+    #logo-wordmark {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--color-text);
+    }
+
+    #logo-wordmark span {
+      color: var(--color-accent); /* "Path" in accent color */
+    }
+
+    /* Navigation tabs in the header */
+    #nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-tab {
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-tab:hover {
+      color: var(--color-text);
+      background: var(--color-accent-dim);
+    }
+
+    .nav-tab.active {
+      color: var(--color-accent);
+      background: var(--color-accent-dim);
+    }
+
+    /* Badge on the My List tab showing how many teams are saved */
+    .tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      color: var(--color-bg);
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    /* ============================================================
+       MAIN CONTENT AREA
+       Side-by-side layout: sidebar on the left, map on the right.
+    ============================================================ */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ============================================================
+       SIDEBAR
+       The left panel where team info, My List, etc. will appear.
+    ============================================================ */
+    #sidebar {
+      width: 320px;
+      flex-shrink: 0;
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    #sidebar-title {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Search box for finding a team */
+    #team-search {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #team-search::placeholder {
+      color: var(--color-muted);
+    }
+
+    #team-search:focus {
+      border-color: var(--color-accent);
+    }
+
+    /* The scrollable content area inside the sidebar */
+    #sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+    }
+
+    /* Custom scrollbar style to match the dark theme */
+    #sidebar-content::-webkit-scrollbar {
+      width: 4px;
+    }
+    #sidebar-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #sidebar-content::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: 2px;
+    }
+
+    /* ============================================================
+       EMPTY STATE
+       Shown when there's no data yet (Phase 1 placeholder).
+    ============================================================ */
+    #empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      gap: 12px;
+      height: 100%;
+    }
+
+    #empty-state .empty-icon {
+      font-size: 36px;
+      opacity: 0.4;
+    }
+
+    #empty-state h3 {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--color-text);
+    }
+
+    #empty-state p {
+      font-size: 13px;
+      color: var(--color-muted);
+      line-height: 1.6;
+    }
+
+    /* ============================================================
+       LEGEND
+       Color key shown at the bottom of the sidebar.
+    ============================================================ */
+    #legend {
+      padding: 12px 18px;
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #legend-title {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 4px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--color-muted);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       MAP
+       The Leaflet map fills the remaining space to the right.
+    ============================================================ */
+    #map {
+      flex: 1;
+      background: var(--color-bg);
+    }
+
+    /*
+      Override Leaflet's default styles to match our dark theme.
+      Leaflet injects its own CSS, so we need to nudge a few things.
+    */
+    .leaflet-container {
+      background: #0d1520 !important;
+      font-family: var(--font-body) !important;
+    }
+
+    .leaflet-control-zoom {
+      border: 1px solid var(--color-border) !important;
+      border-radius: 6px !important;
+      overflow: hidden;
+    }
+
+    .leaflet-control-zoom a {
+      background: var(--color-surface) !important;
+      color: var(--color-text) !important;
+      border-bottom: 1px solid var(--color-border) !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: var(--color-border) !important;
+    }
+
+    .leaflet-control-attribution {
+      background: rgba(10,14,26,0.8) !important;
+      color: var(--color-muted) !important;
+      font-size: 10px !important;
+    }
+
+    .leaflet-control-attribution a {
+      color: var(--color-accent) !important;
+    }
+
+    /* ============================================================
+       MAP TOOLTIP POPUPS
+       The small cards that appear when you click a marker.
+    ============================================================ */
+    .leaflet-popup-content-wrapper {
+      background: var(--color-surface) !important;
+      border: 1px solid var(--color-border) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+      color: var(--color-text) !important;
+    }
+
+    .leaflet-popup-tip {
+      background: var(--color-surface) !important;
+    }
+
+    .leaflet-popup-content {
+      margin: 14px 16px !important;
+      font-family: var(--font-body) !important;
+    }
+
+    .popup-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--color-text);
+      margin-bottom: 4px;
+    }
+
+    .popup-subtitle {
+      font-size: 12px;
+      color: var(--color-muted);
+    }
+
+    /* ============================================================
+       LAYER TOGGLE CONTROLS
+       Buttons to show/hide venue and training camp markers.
+    ============================================================ */
+    #layer-controls {
+      position: absolute;
+      top: 66px; /* just below the header */
+      right: 12px;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .layer-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      color: var(--color-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .layer-btn:hover {
+      border-color: var(--color-accent);
+      color: var(--color-text);
+    }
+
+    .layer-btn.active {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+      background: var(--color-accent-dim);
+    }
+
+    .layer-btn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="app">
+
+  <!-- ============================================================
+       HEADER
+  ============================================================ -->
+  <header id="header">
+    <div id="logo">
+      <!-- Simple SVG icon: a soccer ball with a dotted path line -->
+      <svg id="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="9" cy="19" r="5" stroke="#00d4ff" stroke-width="1.5"/>
+        <circle cx="9" cy="19" r="2" fill="#00d4ff" opacity="0.3"/>
+        <circle cx="22" cy="7" r="3" fill="#00d4ff" opacity="0.5"/>
+        <path d="M13 16 Q18 12 20 9" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+      </svg>
+      <div id="logo-wordmark">Match<span>Path</span></div>
+    </div>
+
+    <nav id="nav">
+      <button class="nav-tab active" data-tab="explore">Explore</button>
+      <button class="nav-tab" data-tab="mylist">My List <span class="tab-badge" id="list-badge" style="display:none">0</span></button>
+      <button class="nav-tab" data-tab="travel">Travel</button>
+    </nav>
+  </header>
+
+  <!-- ============================================================
+       MAIN CONTENT (sidebar + map)
+  ============================================================ -->
+  <div id="main">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <div id="sidebar-title">2026 FIFA World Cup</div>
+        <input
+          type="text"
+          id="team-search"
+          placeholder="Search for a team…"
+          autocomplete="off"
+        />
+      </div>
+
+      <div id="sidebar-content">
+        <!--
+          PHASE 1 PLACEHOLDER
+          This empty state will be replaced in Phase 3 when we add
+          team selection and the travel itinerary panel.
+        -->
+        <div id="empty-state">
+          <div class="empty-icon">⚽</div>
+          <h3>Team data coming soon</h3>
+          <p>
+            Match venues and training camps will appear here in Phase 2.
+            Use the map to explore host cities.
+          </p>
+        </div>
+      </div>
+
+      <!-- LEGEND at the bottom of the sidebar -->
+      <div id="legend">
+        <div id="legend-title">Map Key</div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background: #00d4ff"></div>
+          Match venue
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background: #00e676"></div>
+          Training camp
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background: #ffab40"></div>
+          Possible match (conditional)
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAP -->
+    <div id="map"></div>
+
+  </div><!-- end #main -->
+</div><!-- end #app -->
+
+
+<!-- Layer toggle buttons (positioned over the map) -->
+<div id="layer-controls">
+  <button class="layer-btn active" id="btn-venues">
+    <div class="layer-dot" style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div>
+    Venues
+  </button>
+  <button class="layer-btn active" id="btn-camps">
+    <div class="layer-dot" style="width:8px;height:8px;border-radius:50%;background:#00e676;flex-shrink:0"></div>
+    Training Camps
+  </button>
+</div>
+
+
+<!-- Load our data file (currently empty stubs) -->
+<script src="data.js"></script>
+
+<script>
+// ============================================================
+// MAP SETUP
+// Initialize Leaflet and center on North America.
+// ============================================================
+
+const map = L.map('map', {
+  center: [30, -95],  // center of North America (lat, lng)
+  zoom: 4,
+  zoomControl: true,
+  attributionControl: true
+});
+
+// Dark-themed map tiles from CartoDB.
+// "Dark Matter" tiles match our navy color scheme perfectly.
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+
+// ============================================================
+// MARKER LAYERS
+// We use LayerGroups so we can toggle venues and camps on/off
+// independently without rebuilding the whole map.
+// ============================================================
+
+const venueLayer = L.layerGroup().addTo(map);
+const campLayer  = L.layerGroup().addTo(map);
+
+
+// ============================================================
+// CUSTOM MARKER ICONS
+// Leaflet's default markers are blue droplets — we replace them
+// with clean colored circles that match our design system.
+// ============================================================
+
+function makeCircleIcon(color, size = 12) {
+  // Creates an SVG circle as a map marker
+  return L.divIcon({
+    className: '',
+    html: `
+      <svg width="${size + 8}" height="${size + 8}" viewBox="0 0 ${size+8} ${size+8}" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${(size+8)/2}" cy="${(size+8)/2}" r="${size/2}" fill="${color}" fill-opacity="0.9" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+        <circle cx="${(size+8)/2}" cy="${(size+8)/2}" r="${size/2 + 3}" fill="${color}" fill-opacity="0.15"/>
+      </svg>
+    `,
+    iconSize: [size + 8, size + 8],
+    iconAnchor: [(size + 8) / 2, (size + 8) / 2],
+    popupAnchor: [0, -((size + 8) / 2)]
+  });
+}
+
+const venueIcon = makeCircleIcon('#00d4ff', 14);  // cyan for venues
+const campIcon  = makeCircleIcon('#00e676', 10);  // green for training camps
+
+
+// ============================================================
+// RENDER MARKERS
+// Loop through the data arrays and add a marker for each item.
+// These loops will do nothing in Phase 1 (arrays are empty)
+// but will automatically work once data is added in Phase 2.
+// ============================================================
+
+// Render venue markers
+venues.forEach(venue => {
+  const marker = L.marker([venue.lat, venue.lng], { icon: venueIcon });
+  marker.bindPopup(`
+    <div class="popup-title">${venue.name}</div>
+    <div class="popup-subtitle">${venue.city}, ${venue.country}</div>
+  `);
+  marker.addTo(venueLayer);
+});
+
+// Render training camp markers
+teams.forEach(team => {
+  if (!team.trainingCamp) return;
+  const tc = team.trainingCamp;
+  const marker = L.marker([tc.lat, tc.lng], { icon: campIcon });
+  marker.bindPopup(`
+    <div class="popup-title">${team.name}</div>
+    <div class="popup-subtitle">Training camp · ${tc.name}, ${tc.city}</div>
+  `);
+  marker.addTo(campLayer);
+});
+
+
+// ============================================================
+// LAYER TOGGLE BUTTONS
+// The "Venues" and "Training Camps" buttons above the map.
+// ============================================================
+
+document.getElementById('btn-venues').addEventListener('click', function() {
+  this.classList.toggle('active');
+  if (map.hasLayer(venueLayer)) {
+    map.removeLayer(venueLayer);
+  } else {
+    map.addLayer(venueLayer);
+  }
+});
+
+document.getElementById('btn-camps').addEventListener('click', function() {
+  this.classList.toggle('active');
+  if (map.hasLayer(campLayer)) {
+    map.removeLayer(campLayer);
+  } else {
+    map.addLayer(campLayer);
+  }
+});
+
+
+// ============================================================
+// NAV TABS
+// Switching between Explore, My List, and Travel views.
+// The actual content for each tab will be built in later phases.
+// ============================================================
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+    // TODO: Phase 3/4 will swap sidebar content based on active tab
+  });
+});
+</script>
+
+</body>
+</html>
