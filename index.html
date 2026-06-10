@@ -546,10 +546,28 @@ const teamMap   = Object.fromEntries(teams.map(t => [t.id, t]));
 // ============================================================
 const map = L.map('map', { center: [33, -97], zoom: 4, zoomControl: true });
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
-  subdomains: 'abcd', maxZoom: 19
-}).addTo(map);
+// Primary: Stadia Alidade Smooth Dark — dark themed, no API key needed
+// Fallback: OpenStreetMap standard tiles if Stadia fails
+const stadiaLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://openmaptiles.org/">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 20
+});
+
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 19
+});
+
+// Try Stadia first; if tiles fail to load within 5s, fall back to OSM
+stadiaLayer.addTo(map);
+let stadiaLoaded = false;
+stadiaLayer.once('tileload', () => { stadiaLoaded = true; });
+setTimeout(() => {
+  if (!stadiaLoaded) {
+    map.removeLayer(stadiaLayer);
+    osmLayer.addTo(map);
+  }
+}, 5000);
 
 // ── Layer groups ──
 const venueLayer   = L.layerGroup().addTo(map);
