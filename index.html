@@ -5,51 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MatchPath</title>
 
-  <!--
-    Leaflet.js — the mapping library we use to show the interactive map.
-    We load it from a CDN (a public server), so no installation needed.
-  -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!--
-    Google Fonts — the typefaces that give MatchPath its visual identity.
-    "Barlow Condensed" for headings: athletic, direct, good for data.
-    "Inter" for body text: clean and readable at small sizes.
-  -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
 
   <style>
-    /* ============================================================
-       DESIGN TOKENS
-       These variables define the color palette and fonts.
-       Changing a value here updates it everywhere in the app.
-    ============================================================ */
+    /* ── DESIGN TOKENS ── */
     :root {
-      --color-bg:         #0a0e1a;   /* deep navy — the canvas */
-      --color-surface:    #131929;   /* slightly lighter navy — panels */
-      --color-border:     #1e2d45;   /* subtle borders */
-      --color-accent:     #00d4ff;   /* electric cyan — the signature color */
-      --color-accent-dim: #00d4ff22; /* transparent accent for backgrounds */
-      --color-text:       #e8edf5;   /* near-white for primary text */
-      --color-muted:      #6b7fa3;   /* muted blue-grey for secondary text */
-      --color-confirmed:  #00e676;   /* green — confirmed matches */
-      --color-possible:   #ffab40;   /* amber — conditional/possible matches */
-
+      --color-bg:         #0a0e1a;
+      --color-surface:    #131929;
+      --color-surface2:   #1a2236;
+      --color-border:     #1e2d45;
+      --color-accent:     #00d4ff;
+      --color-accent-dim: #00d4ff18;
+      --color-text:       #e8edf5;
+      --color-muted:      #6b7fa3;
+      --color-confirmed:  #00e676;
+      --color-possible:   #ffab40;
       --font-display: 'Barlow Condensed', sans-serif;
       --font-body:    'Inter', sans-serif;
     }
 
-    /* ============================================================
-       RESET & BASE
-       Removes browser default spacing and sets the foundation.
-    ============================================================ */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
       height: 100%;
@@ -57,23 +35,12 @@
       color: var(--color-text);
       font-family: var(--font-body);
       font-size: 14px;
-      overflow: hidden; /* prevents page scroll — the app fills the window */
+      overflow: hidden;
     }
 
-    /* ============================================================
-       APP SHELL
-       The top-level layout: header + main content area.
-    ============================================================ */
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+    #app { display: flex; flex-direction: column; height: 100vh; }
 
-    /* ============================================================
-       HEADER
-       The top bar with the MatchPath logo and nav tabs.
-    ============================================================ */
+    /* ── HEADER ── */
     #header {
       display: flex;
       align-items: center;
@@ -82,41 +49,15 @@
       height: 52px;
       background: var(--color-surface);
       border-bottom: 1px solid var(--color-border);
-      flex-shrink: 0; /* header never shrinks — always full height */
+      flex-shrink: 0;
       z-index: 1000;
     }
 
-    #logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    #logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    #logo-wordmark { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+    #logo-wordmark span { color: var(--color-accent); }
 
-    /* The pitch-path icon: a small circle (ball) + line (path) */
-    #logo-icon {
-      width: 28px;
-      height: 28px;
-      position: relative;
-    }
-
-    #logo-wordmark {
-      font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: var(--color-text);
-    }
-
-    #logo-wordmark span {
-      color: var(--color-accent); /* "Path" in accent color */
-    }
-
-    /* Navigation tabs in the header */
-    #nav {
-      display: flex;
-      gap: 4px;
-    }
-
+    #nav { display: flex; gap: 4px; }
     .nav-tab {
       padding: 6px 14px;
       border-radius: 4px;
@@ -131,47 +72,19 @@
       background: transparent;
       transition: color 0.15s, background 0.15s;
     }
-
-    .nav-tab:hover {
-      color: var(--color-text);
-      background: var(--color-accent-dim);
-    }
-
-    .nav-tab.active {
-      color: var(--color-accent);
-      background: var(--color-accent-dim);
-    }
-
-    /* Badge on the My List tab showing how many teams are saved */
+    .nav-tab:hover { color: var(--color-text); background: var(--color-accent-dim); }
+    .nav-tab.active { color: var(--color-accent); background: var(--color-accent-dim); }
     .tab-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: var(--color-accent);
-      color: var(--color-bg);
-      font-size: 10px;
-      font-weight: 700;
-      margin-left: 5px;
-      vertical-align: middle;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--color-accent); color: var(--color-bg);
+      font-size: 10px; font-weight: 700; margin-left: 5px; vertical-align: middle;
     }
 
-    /* ============================================================
-       MAIN CONTENT AREA
-       Side-by-side layout: sidebar on the left, map on the right.
-    ============================================================ */
-    #main {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
+    /* ── LAYOUT ── */
+    #main { display: flex; flex: 1; overflow: hidden; }
 
-    /* ============================================================
-       SIDEBAR
-       The left panel where team info, My List, etc. will appear.
-    ============================================================ */
+    /* ── SIDEBAR ── */
     #sidebar {
       width: 320px;
       flex-shrink: 0;
@@ -183,8 +96,9 @@
     }
 
     #sidebar-header {
-      padding: 16px 18px 12px;
+      padding: 14px 16px 12px;
       border-bottom: 1px solid var(--color-border);
+      flex-shrink: 0;
     }
 
     #sidebar-title {
@@ -197,7 +111,9 @@
       margin-bottom: 10px;
     }
 
-    /* Search box for finding a team */
+    /* Search input + dropdown wrapper */
+    #search-wrapper { position: relative; }
+
     #team-search {
       width: 100%;
       padding: 8px 12px;
@@ -210,153 +126,268 @@
       outline: none;
       transition: border-color 0.15s;
     }
+    #team-search::placeholder { color: var(--color-muted); }
+    #team-search:focus { border-color: var(--color-accent); }
 
-    #team-search::placeholder {
+    /* Autocomplete dropdown */
+    #search-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--color-surface2);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      z-index: 9999;
+      max-height: 220px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    #search-dropdown.open { display: block; }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      transition: background 0.1s;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { background: var(--color-accent-dim); }
+    .dropdown-flag { font-size: 18px; flex-shrink: 0; }
+    .dropdown-name { font-size: 13px; color: var(--color-text); }
+    .dropdown-group {
+      margin-left: auto;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       color: var(--color-muted);
+      background: var(--color-border);
+      padding: 2px 6px;
+      border-radius: 3px;
     }
 
-    #team-search:focus {
-      border-color: var(--color-accent);
-    }
-
-    /* The scrollable content area inside the sidebar */
+    /* ── SIDEBAR CONTENT (scrollable) ── */
     #sidebar-content {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 18px;
+      padding: 0;
     }
+    #sidebar-content::-webkit-scrollbar { width: 4px; }
+    #sidebar-content::-webkit-scrollbar-track { background: transparent; }
+    #sidebar-content::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 
-    /* Custom scrollbar style to match the dark theme */
-    #sidebar-content::-webkit-scrollbar {
-      width: 4px;
-    }
-    #sidebar-content::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    #sidebar-content::-webkit-scrollbar-thumb {
-      background: var(--color-border);
-      border-radius: 2px;
-    }
-
-    /* ============================================================
-       EMPTY STATE
-       Shown when there's no data yet (Phase 1 placeholder).
-    ============================================================ */
+    /* ── EMPTY STATE ── */
     #empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 40px 20px;
+      padding: 40px 24px;
       gap: 12px;
       height: 100%;
+      min-height: 260px;
     }
+    .empty-icon { font-size: 36px; opacity: 0.3; }
+    #empty-state h3 { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--color-text); }
+    #empty-state p { font-size: 13px; color: var(--color-muted); line-height: 1.6; }
 
-    #empty-state .empty-icon {
-      font-size: 36px;
-      opacity: 0.4;
+    /* ── TEAM PANEL (shown when a team is selected) ── */
+    #team-panel { display: none; }
+
+    .team-panel-header {
+      padding: 14px 16px;
+      background: var(--color-surface2);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-
-    #empty-state h3 {
+    .team-panel-flag { font-size: 28px; }
+    .team-panel-info { flex: 1; }
+    .team-panel-name {
       font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+    .team-panel-meta {
+      font-size: 11px;
+      color: var(--color-muted);
+      margin-top: 3px;
+      font-family: var(--font-display);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Bookmark button */
+    .btn-bookmark {
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
       font-size: 16px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-bookmark:hover { border-color: var(--color-accent); color: var(--color-accent); }
+    .btn-bookmark.saved { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-dim); }
+
+    /* Travel stats bar */
+    .travel-stats {
+      display: flex;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .travel-stat {
+      flex: 1;
+      padding: 10px 14px;
+      border-right: 1px solid var(--color-border);
+      text-align: center;
+    }
+    .travel-stat:last-child { border-right: none; }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-accent);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--color-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 3px;
+      font-family: var(--font-display);
+    }
+
+    /* Section label inside team panel */
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      padding: 12px 16px 6px;
+    }
+
+    /* Training camp row */
+    .camp-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 16px 12px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .stop-icon {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .stop-icon.camp { background: #00e67620; color: var(--color-confirmed); border: 1.5px solid var(--color-confirmed); }
+    .stop-icon.match { background: #00d4ff20; color: var(--color-accent); border: 1.5px solid var(--color-accent); }
+    .stop-icon.possible { background: #ffab4020; color: var(--color-possible); border: 1.5px solid var(--color-possible); }
+
+    .stop-body { flex: 1; }
+    .stop-title { font-size: 13px; font-weight: 500; color: var(--color-text); line-height: 1.3; }
+    .stop-sub { font-size: 11px; color: var(--color-muted); margin-top: 2px; line-height: 1.4; }
+    .stop-badge {
+      font-size: 10px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .stop-badge.confirmed { background: #00e67618; color: var(--color-confirmed); border: 1px solid #00e67640; }
+    .stop-badge.possible  { background: #ffab4018; color: var(--color-possible);  border: 1px solid #ffab4040; }
+
+    /* Match stop row */
+    .match-row {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .match-row:last-child { border-bottom: none; }
+
+    /* Distance connector between stops */
+    .distance-connector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 16px 5px 28px;
+      color: var(--color-muted);
+      font-size: 11px;
+    }
+    .distance-line {
+      flex: 1;
+      height: 1px;
+      background: var(--color-border);
+      border-top: 1px dashed var(--color-border);
+    }
+
+    /* Broadcaster pill */
+    .broadcaster-list { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .broadcaster-pill {
+      font-size: 10px;
+      font-family: var(--font-display);
       font-weight: 600;
       letter-spacing: 0.04em;
-      color: var(--color-text);
-    }
-
-    #empty-state p {
-      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: var(--color-border);
       color: var(--color-muted);
-      line-height: 1.6;
     }
 
-    /* ============================================================
-       LEGEND
-       Color key shown at the bottom of the sidebar.
-    ============================================================ */
+    /* ── LEGEND ── */
     #legend {
-      padding: 12px 18px;
+      padding: 10px 16px;
       border-top: 1px solid var(--color-border);
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      gap: 14px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
     }
-
     #legend-title {
+      width: 100%;
       font-family: var(--font-display);
       font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--color-muted);
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
+    .legend-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-muted); }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--color-muted);
-    }
+    /* ── MAP ── */
+    #map { flex: 1; background: var(--color-bg); }
 
-    .legend-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    .leaflet-container { background: #0d1520 !important; font-family: var(--font-body) !important; }
+    .leaflet-control-zoom { border: 1px solid var(--color-border) !important; border-radius: 6px !important; overflow: hidden; }
+    .leaflet-control-zoom a { background: var(--color-surface) !important; color: var(--color-text) !important; border-bottom: 1px solid var(--color-border) !important; }
+    .leaflet-control-zoom a:hover { background: var(--color-border) !important; }
+    .leaflet-control-attribution { background: rgba(10,14,26,0.8) !important; color: var(--color-muted) !important; font-size: 10px !important; }
+    .leaflet-control-attribution a { color: var(--color-accent) !important; }
 
-    /* ============================================================
-       MAP
-       The Leaflet map fills the remaining space to the right.
-    ============================================================ */
-    #map {
-      flex: 1;
-      background: var(--color-bg);
-    }
-
-    /*
-      Override Leaflet's default styles to match our dark theme.
-      Leaflet injects its own CSS, so we need to nudge a few things.
-    */
-    .leaflet-container {
-      background: #0d1520 !important;
-      font-family: var(--font-body) !important;
-    }
-
-    .leaflet-control-zoom {
-      border: 1px solid var(--color-border) !important;
-      border-radius: 6px !important;
-      overflow: hidden;
-    }
-
-    .leaflet-control-zoom a {
-      background: var(--color-surface) !important;
-      color: var(--color-text) !important;
-      border-bottom: 1px solid var(--color-border) !important;
-    }
-
-    .leaflet-control-zoom a:hover {
-      background: var(--color-border) !important;
-    }
-
-    .leaflet-control-attribution {
-      background: rgba(10,14,26,0.8) !important;
-      color: var(--color-muted) !important;
-      font-size: 10px !important;
-    }
-
-    .leaflet-control-attribution a {
-      color: var(--color-accent) !important;
-    }
-
-    /* ============================================================
-       MAP TOOLTIP POPUPS
-       The small cards that appear when you click a marker.
-    ============================================================ */
     .leaflet-popup-content-wrapper {
       background: var(--color-surface) !important;
       border: 1px solid var(--color-border) !important;
@@ -364,48 +395,26 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
       color: var(--color-text) !important;
     }
+    .leaflet-popup-tip { background: var(--color-surface) !important; }
+    .leaflet-popup-content { margin: 12px 14px !important; font-family: var(--font-body) !important; }
+    .popup-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: 0.03em; margin-bottom: 4px; }
+    .popup-subtitle { font-size: 12px; color: var(--color-muted); }
+    .popup-matches { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .popup-match { font-size: 11px; color: var(--color-muted); }
+    .popup-match strong { color: var(--color-text); }
 
-    .leaflet-popup-tip {
-      background: var(--color-surface) !important;
-    }
-
-    .leaflet-popup-content {
-      margin: 14px 16px !important;
-      font-family: var(--font-body) !important;
-    }
-
-    .popup-title {
-      font-family: var(--font-display);
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      color: var(--color-text);
-      margin-bottom: 4px;
-    }
-
-    .popup-subtitle {
-      font-size: 12px;
-      color: var(--color-muted);
-    }
-
-    /* ============================================================
-       LAYER TOGGLE CONTROLS
-       Buttons to show/hide venue and training camp markers.
-    ============================================================ */
+    /* ── LAYER CONTROLS ── */
     #layer-controls {
       position: absolute;
-      top: 66px; /* just below the header */
+      top: 66px;
       right: 12px;
       z-index: 900;
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
-
     .layer-btn {
-      display: flex;
-      align-items: center;
-      gap: 7px;
+      display: flex; align-items: center; gap: 7px;
       padding: 7px 12px;
       background: var(--color-surface);
       border: 1px solid var(--color-border);
@@ -418,38 +427,17 @@
       transition: all 0.15s;
       white-space: nowrap;
     }
-
-    .layer-btn:hover {
-      border-color: var(--color-accent);
-      color: var(--color-text);
-    }
-
-    .layer-btn.active {
-      border-color: var(--color-accent);
-      color: var(--color-accent);
-      background: var(--color-accent-dim);
-    }
-
-    .layer-btn-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    .layer-btn:hover { border-color: var(--color-accent); color: var(--color-text); }
+    .layer-btn.active { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-dim); }
   </style>
 </head>
 
 <body>
-
 <div id="app">
 
-  <!-- ============================================================
-       HEADER
-  ============================================================ -->
   <header id="header">
-    <div id="logo">
-      <!-- Simple SVG icon: a soccer ball with a dotted path line -->
-      <svg id="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div id="logo" onclick="clearTeamSelection()">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="9" cy="19" r="5" stroke="#00d4ff" stroke-width="1.5"/>
         <circle cx="9" cy="19" r="2" fill="#00d4ff" opacity="0.3"/>
         <circle cx="22" cy="7" r="3" fill="#00d4ff" opacity="0.5"/>
@@ -457,7 +445,6 @@
       </svg>
       <div id="logo-wordmark">Match<span>Path</span></div>
     </div>
-
     <nav id="nav">
       <button class="nav-tab active" data-tab="explore">Explore</button>
       <button class="nav-tab" data-tab="mylist">My List <span class="tab-badge" id="list-badge" style="display:none">0</span></button>
@@ -465,206 +452,471 @@
     </nav>
   </header>
 
-  <!-- ============================================================
-       MAIN CONTENT (sidebar + map)
-  ============================================================ -->
   <div id="main">
-
-    <!-- SIDEBAR -->
     <aside id="sidebar">
+
       <div id="sidebar-header">
         <div id="sidebar-title">2026 FIFA World Cup</div>
-        <input
-          type="text"
-          id="team-search"
-          placeholder="Search for a team…"
-          autocomplete="off"
-        />
+        <div id="search-wrapper">
+          <input type="text" id="team-search" placeholder="Search for a team…" autocomplete="off" />
+          <div id="search-dropdown"></div>
+        </div>
       </div>
 
       <div id="sidebar-content">
-        <!--
-          PHASE 1 PLACEHOLDER
-          This empty state will be replaced in Phase 3 when we add
-          team selection and the travel itinerary panel.
-        -->
+
+        <!-- Empty state — shown before any team is selected -->
         <div id="empty-state">
           <div class="empty-icon">⚽</div>
-          <h3>Team data coming soon</h3>
-          <p>
-            Match venues and training camps will appear here in Phase 2.
-            Use the map to explore host cities.
-          </p>
+          <h3>Select a team to begin</h3>
+          <p>Search for any of the 48 teams to see their training camp, match schedule, and travel route on the map.</p>
         </div>
+
+        <!-- Team panel — shown after a team is selected -->
+        <div id="team-panel"></div>
+
       </div>
 
-      <!-- LEGEND at the bottom of the sidebar -->
       <div id="legend">
         <div id="legend-title">Map Key</div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background: #00d4ff"></div>
-          Match venue
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background: #00e676"></div>
-          Training camp
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background: #ffab40"></div>
-          Possible match (conditional)
-        </div>
+        <div class="legend-row"><div class="legend-dot" style="background:#00d4ff"></div>Venue</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#00e676"></div>Training camp</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#ffab40"></div>Possible</div>
       </div>
+
     </aside>
-
-    <!-- MAP -->
     <div id="map"></div>
+  </div>
+</div>
 
-  </div><!-- end #main -->
-</div><!-- end #app -->
-
-
-<!-- Layer toggle buttons (positioned over the map) -->
+<!-- Layer controls overlay -->
 <div id="layer-controls">
   <button class="layer-btn active" id="btn-venues">
-    <div class="layer-dot" style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div>
-    Venues
+    <div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div>Venues
   </button>
   <button class="layer-btn active" id="btn-camps">
-    <div class="layer-dot" style="width:8px;height:8px;border-radius:50%;background:#00e676;flex-shrink:0"></div>
-    Training Camps
+    <div style="width:8px;height:8px;border-radius:50%;background:#00e676;flex-shrink:0"></div>Training Camps
   </button>
 </div>
 
-
-<!-- Load our data file (currently empty stubs) -->
 <script src="data.js"></script>
-
 <script>
 // ============================================================
-// MAP SETUP
-// Initialize Leaflet and center on North America.
+// UTILITY: DISTANCE CALCULATION
+// Haversine formula — calculates straight-line distance
+// between two GPS coordinates in miles.
 // ============================================================
+function distanceMiles(lat1, lng1, lat2, lng2) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2)
+           + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180)
+           * Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
-const map = L.map('map', {
-  center: [30, -95],  // center of North America (lat, lng)
-  zoom: 4,
-  zoomControl: true,
-  attributionControl: true
-});
+function formatMiles(m) {
+  return Math.round(m).toLocaleString() + ' mi';
+}
 
-// Dark-themed map tiles from CartoDB.
-// "Dark Matter" tiles match our navy color scheme perfectly.
+function formatDate(dateStr, timeStr) {
+  // Convert "2026-06-11" + "15:00" to "Thu Jun 11 · 3:00 PM ET"
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const [h, min] = timeStr.split(':').map(Number);
+  const dt = new Date(y, mo - 1, d, h, min);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const hour = h % 12 || 12;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const minStr = min === 0 ? '' : `:${String(min).padStart(2,'0')}`;
+  return `${days[dt.getDay()]} ${months[mo-1]} ${d} · ${hour}${minStr} ${ampm} ET`;
+}
+
+// ============================================================
+// BUILD LOOKUP MAPS
+// Quick access to venues and matches by ID
+// ============================================================
+const venueMap  = Object.fromEntries(venues.map(v => [v.id, v]));
+const matchMap  = Object.fromEntries(matches.map(m => [m.id, m]));
+const teamMap   = Object.fromEntries(teams.map(t => [t.id, t]));
+
+// ============================================================
+// MAP SETUP
+// ============================================================
+const map = L.map('map', { center: [33, -97], zoom: 4, zoomControl: true });
+
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
-  subdomains: 'abcd',
-  maxZoom: 19
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19
 }).addTo(map);
 
+// ── Layer groups ──
+const venueLayer   = L.layerGroup().addTo(map);
+const campLayer    = L.layerGroup().addTo(map);
+const routeLayer   = L.layerGroup(); // team travel route — not added by default
 
-// ============================================================
-// MARKER LAYERS
-// We use LayerGroups so we can toggle venues and camps on/off
-// independently without rebuilding the whole map.
-// ============================================================
-
-const venueLayer = L.layerGroup().addTo(map);
-const campLayer  = L.layerGroup().addTo(map);
-
-
-// ============================================================
-// CUSTOM MARKER ICONS
-// Leaflet's default markers are blue droplets — we replace them
-// with clean colored circles that match our design system.
-// ============================================================
-
-function makeCircleIcon(color, size = 12) {
-  // Creates an SVG circle as a map marker
+// ── Icon factories ──
+function makeCircleIcon(color, size, pulse = false) {
+  const total = size + 10;
+  const pulseRing = pulse ? `<circle cx="${total/2}" cy="${total/2}" r="${size/2+4}" fill="${color}" fill-opacity="0.12"/>` : '';
   return L.divIcon({
     className: '',
-    html: `
-      <svg width="${size + 8}" height="${size + 8}" viewBox="0 0 ${size+8} ${size+8}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${(size+8)/2}" cy="${(size+8)/2}" r="${size/2}" fill="${color}" fill-opacity="0.9" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-        <circle cx="${(size+8)/2}" cy="${(size+8)/2}" r="${size/2 + 3}" fill="${color}" fill-opacity="0.15"/>
-      </svg>
-    `,
-    iconSize: [size + 8, size + 8],
-    iconAnchor: [(size + 8) / 2, (size + 8) / 2],
-    popupAnchor: [0, -((size + 8) / 2)]
+    html: `<svg width="${total}" height="${total}" viewBox="0 0 ${total} ${total}" xmlns="http://www.w3.org/2000/svg">
+      ${pulseRing}
+      <circle cx="${total/2}" cy="${total/2}" r="${size/2}" fill="${color}" fill-opacity="0.9" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+    </svg>`,
+    iconSize: [total, total],
+    iconAnchor: [total/2, total/2],
+    popupAnchor: [0, -(total/2)]
   });
 }
 
-const venueIcon = makeCircleIcon('#00d4ff', 14);  // cyan for venues
-const campIcon  = makeCircleIcon('#00e676', 10);  // green for training camps
+const venueIcon    = makeCircleIcon('#00d4ff', 14);
+const campIcon     = makeCircleIcon('#00e676', 10);
+const selectedVenueIcon = makeCircleIcon('#00d4ff', 18, true);
+const selectedCampIcon  = makeCircleIcon('#00e676', 14, true);
+const possibleIcon = makeCircleIcon('#ffab40', 12, true);
 
-
-// ============================================================
-// RENDER MARKERS
-// Loop through the data arrays and add a marker for each item.
-// These loops will do nothing in Phase 1 (arrays are empty)
-// but will automatically work once data is added in Phase 2.
-// ============================================================
-
-// Render venue markers
+// ── Render base markers ──
+// Store references so we can open popups on click from sidebar
+const venueMarkers = {};
 venues.forEach(venue => {
+  // Count how many group stage matches happen here
+  const venueMatches = matches.filter(m => m.venueId === venue.id);
+  const matchLines = venueMatches.slice(0,4).map(m => {
+    const t1 = teamMap[m.team1]?.name || m.team1;
+    const t2 = teamMap[m.team2]?.name || m.team2;
+    return `<div class="popup-match"><strong>${t1}</strong> vs <strong>${t2}</strong> <span style="color:var(--color-muted)">· ${m.date.slice(5).replace('-','/')}</span></div>`;
+  }).join('');
+  const more = venueMatches.length > 4 ? `<div class="popup-match" style="color:var(--color-muted)">+${venueMatches.length-4} more matches</div>` : '';
+
   const marker = L.marker([venue.lat, venue.lng], { icon: venueIcon });
   marker.bindPopup(`
     <div class="popup-title">${venue.name}</div>
     <div class="popup-subtitle">${venue.city}, ${venue.country}</div>
+    <div class="popup-matches">${matchLines}${more}</div>
   `);
   marker.addTo(venueLayer);
+  venueMarkers[venue.id] = marker;
 });
 
-// Render training camp markers
+const campMarkers = {};
 teams.forEach(team => {
   if (!team.trainingCamp) return;
   const tc = team.trainingCamp;
   const marker = L.marker([tc.lat, tc.lng], { icon: campIcon });
   marker.bindPopup(`
-    <div class="popup-title">${team.name}</div>
-    <div class="popup-subtitle">Training camp · ${tc.name}, ${tc.city}</div>
+    <div class="popup-title">${team.flagEmoji} ${team.name}</div>
+    <div class="popup-subtitle">Training camp · ${tc.name}</div>
+    <div class="popup-subtitle">${tc.city}</div>
   `);
   marker.addTo(campLayer);
+  campMarkers[team.id] = marker;
 });
-
 
 // ============================================================
 // LAYER TOGGLE BUTTONS
-// The "Venues" and "Training Camps" buttons above the map.
 // ============================================================
-
 document.getElementById('btn-venues').addEventListener('click', function() {
   this.classList.toggle('active');
-  if (map.hasLayer(venueLayer)) {
-    map.removeLayer(venueLayer);
-  } else {
-    map.addLayer(venueLayer);
-  }
+  map.hasLayer(venueLayer) ? map.removeLayer(venueLayer) : map.addLayer(venueLayer);
 });
-
 document.getElementById('btn-camps').addEventListener('click', function() {
   this.classList.toggle('active');
-  if (map.hasLayer(campLayer)) {
-    map.removeLayer(campLayer);
-  } else {
-    map.addLayer(campLayer);
-  }
+  map.hasLayer(campLayer) ? map.removeLayer(campLayer) : map.addLayer(campLayer);
 });
 
+// ============================================================
+// SEARCH / AUTOCOMPLETE
+// ============================================================
+const searchInput    = document.getElementById('team-search');
+const searchDropdown = document.getElementById('search-dropdown');
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) { searchDropdown.classList.remove('open'); return; }
+  const results = teams.filter(t => t.name.toLowerCase().includes(q)).slice(0, 8);
+  if (!results.length) { searchDropdown.classList.remove('open'); return; }
+  searchDropdown.innerHTML = results.map(t => `
+    <div class="dropdown-item" data-id="${t.id}">
+      <span class="dropdown-flag">${t.flagEmoji}</span>
+      <span class="dropdown-name">${t.name}</span>
+      <span class="dropdown-group">Group ${t.group}</span>
+    </div>
+  `).join('');
+  searchDropdown.classList.add('open');
+  searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
+    el.addEventListener('click', () => {
+      selectTeam(el.dataset.id);
+      searchInput.value = '';
+      searchDropdown.classList.remove('open');
+    });
+  });
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#search-wrapper')) searchDropdown.classList.remove('open');
+});
+
+// ============================================================
+// TEAM SELECTION — the core Phase 3 feature
+// ============================================================
+let activeTeamId = null;
+
+function selectTeam(teamId) {
+  activeTeamId = teamId;
+  const team = teamMap[teamId];
+  if (!team) return;
+
+  // Clear previous route
+  routeLayer.clearLayers();
+  map.removeLayer(routeLayer);
+  map.addLayer(routeLayer);
+
+  // Build the team's ordered stops: training camp + group stage matches
+  // sorted by date, plus knockout placeholders
+  const teamMatches = (team.matchIds || [])
+    .map(id => matchMap[id])
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  // Build a list of stops with coordinates for drawing the path
+  const tc = team.trainingCamp;
+  const stops = [
+    { type: 'camp', lat: tc.lat, lng: tc.lng }
+  ];
+  teamMatches.forEach(m => {
+    const v = venueMap[m.venueId];
+    if (v) stops.push({ type: 'match', lat: v.lat, lng: v.lng });
+  });
+
+  // Draw dashed route line between stops
+  if (stops.length > 1) {
+    const latlngs = stops.map(s => [s.lat, s.lng]);
+    L.polyline(latlngs, {
+      color: '#00d4ff',
+      weight: 2,
+      opacity: 0.6,
+      dashArray: '6 6'
+    }).addTo(routeLayer);
+  }
+
+  // Draw highlighted markers for this team's stops
+  // Training camp
+  L.marker([tc.lat, tc.lng], { icon: selectedCampIcon, zIndexOffset: 500 })
+    .bindPopup(`<div class="popup-title">${team.flagEmoji} ${team.name}</div><div class="popup-subtitle">⛺ Training camp · ${tc.name}</div>`)
+    .addTo(routeLayer);
+
+  // Match venues (confirmed)
+  teamMatches.forEach((m, i) => {
+    const v = venueMap[m.venueId];
+    if (!v) return;
+    const opponent = teamMap[m.team1]?.id === teamId
+      ? (teamMap[m.team2]?.name || m.team2)
+      : (teamMap[m.team1]?.name || m.team1);
+    L.marker([v.lat, v.lng], { icon: selectedVenueIcon, zIndexOffset: 500 })
+      .bindPopup(`
+        <div class="popup-title">${v.name}</div>
+        <div class="popup-subtitle">${team.flagEmoji} ${team.name} vs ${opponent}</div>
+        <div class="popup-subtitle">${formatDate(m.date, m.time)}</div>
+      `)
+      .addTo(routeLayer);
+  });
+
+  // Fit map to show the full route
+  if (stops.length > 1) {
+    const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
+    map.fitBounds(bounds, { padding: [60, 60] });
+  } else if (stops.length === 1) {
+    map.setView([stops[0].lat, stops[0].lng], 6);
+  }
+
+  // ── Calculate total travel distance ──
+  let totalMiles = 0;
+  for (let i = 1; i < stops.length; i++) {
+    totalMiles += distanceMiles(stops[i-1].lat, stops[i-1].lng, stops[i].lat, stops[i].lng);
+  }
+
+  // ── Build sidebar itinerary ──
+  renderTeamPanel(team, teamMatches, totalMiles);
+}
+
+function renderTeamPanel(team, teamMatches, totalMiles) {
+  const tc = team.trainingCamp;
+  const isSaved = getSavedTeams().includes(team.id);
+
+  // Build itinerary HTML stop by stop
+  let itinerary = '';
+
+  // Training camp stop
+  itinerary += `
+    <div class="section-label">Journey</div>
+    <div class="camp-row">
+      <div class="stop-icon camp">⛺</div>
+      <div class="stop-body">
+        <div class="stop-title">${tc.name}</div>
+        <div class="stop-sub">${tc.city} · Training base</div>
+      </div>
+    </div>
+  `;
+
+  // Each group stage match
+  let prevLat = tc.lat, prevLng = tc.lng;
+  teamMatches.forEach((m, i) => {
+    const v = venueMap[m.venueId];
+    if (!v) return;
+    const dist = distanceMiles(prevLat, prevLng, v.lat, v.lng);
+    const isHome = teamMap[m.team1]?.id === team.id;
+    const opponent = isHome
+      ? (teamMap[m.team2]?.name || m.team2)
+      : (teamMap[m.team1]?.name || m.team1);
+    const oppFlag = isHome
+      ? (teamMap[m.team2]?.flagEmoji || '')
+      : (teamMap[m.team1]?.flagEmoji || '');
+
+    // Distance connector
+    itinerary += `
+      <div class="distance-connector">
+        <div class="distance-line"></div>
+        <span>${formatMiles(dist)}</span>
+        <div class="distance-line"></div>
+      </div>
+    `;
+
+    // Match stop
+    const bcPills = (m.broadcasters || []).map(b =>
+      `<span class="broadcaster-pill">${b}</span>`
+    ).join('');
+
+    itinerary += `
+      <div class="match-row">
+        <div class="stop-icon match">${i + 1}</div>
+        <div class="stop-body">
+          <div class="stop-title">vs ${oppFlag} ${opponent}</div>
+          <div class="stop-sub">${formatDate(m.date, m.time)}</div>
+          <div class="stop-sub">${v.name}, ${v.city}</div>
+          <div class="broadcaster-list">${bcPills}</div>
+        </div>
+        <span class="stop-badge confirmed">Group ${m.group}</span>
+      </div>
+    `;
+
+    prevLat = v.lat;
+    prevLng = v.lng;
+  });
+
+  // Knockout placeholder
+  itinerary += `
+    <div class="distance-connector">
+      <div class="distance-line"></div>
+      <span style="color:var(--color-possible)">if advancing</span>
+      <div class="distance-line"></div>
+    </div>
+    <div class="match-row">
+      <div class="stop-icon possible">?</div>
+      <div class="stop-body">
+        <div class="stop-title" style="color:var(--color-possible)">Round of 32 onwards</div>
+        <div class="stop-sub">Knockout venues determined by group standings. Full bracket visible in the Travel tab.</div>
+      </div>
+      <span class="stop-badge possible">Possible</span>
+    </div>
+  `;
+
+  // Assemble full panel
+  document.getElementById('team-panel').innerHTML = `
+    <div class="team-panel-header">
+      <div class="team-panel-flag">${team.flagEmoji}</div>
+      <div class="team-panel-info">
+        <div class="team-panel-name">${team.name}</div>
+        <div class="team-panel-meta">Group ${team.group} · ${teamMatches.length} confirmed matches</div>
+      </div>
+      <button class="btn-bookmark ${isSaved ? 'saved' : ''}" id="btn-bookmark" title="${isSaved ? 'Remove from My List' : 'Add to My List'}">
+        ${isSaved ? '★' : '☆'}
+      </button>
+    </div>
+
+    <div class="travel-stats">
+      <div class="travel-stat">
+        <div class="stat-value">${Math.round(totalMiles).toLocaleString()}</div>
+        <div class="stat-label">Miles confirmed</div>
+      </div>
+      <div class="travel-stat">
+        <div class="stat-value">${teamMatches.length}</div>
+        <div class="stat-label">Group matches</div>
+      </div>
+      <div class="travel-stat">
+        <div class="stat-value">${new Set(teamMatches.map(m => m.venueId)).size}</div>
+        <div class="stat-label">Venues</div>
+      </div>
+    </div>
+
+    ${itinerary}
+  `;
+
+  // Show panel, hide empty state
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('team-panel').style.display   = 'block';
+
+  // Bookmark button handler
+  document.getElementById('btn-bookmark').addEventListener('click', () => {
+    toggleSavedTeam(team.id);
+    renderTeamPanel(team, teamMatches, totalMiles); // re-render to update button state
+  });
+}
+
+function clearTeamSelection() {
+  activeTeamId = null;
+  routeLayer.clearLayers();
+  map.removeLayer(routeLayer);
+  document.getElementById('team-panel').style.display  = 'none';
+  document.getElementById('empty-state').style.display = 'flex';
+  map.setView([33, -97], 4);
+}
+
+// ============================================================
+// MY LIST — localStorage persistence
+// ============================================================
+function getSavedTeams() {
+  try { return JSON.parse(localStorage.getItem('matchpath-saved') || '[]'); }
+  catch(e) { return []; }
+}
+function setSavedTeams(arr) {
+  localStorage.setItem('matchpath-saved', JSON.stringify(arr));
+}
+function toggleSavedTeam(teamId) {
+  let saved = getSavedTeams();
+  if (saved.includes(teamId)) {
+    saved = saved.filter(id => id !== teamId);
+  } else {
+    saved.push(teamId);
+  }
+  setSavedTeams(saved);
+  updateListBadge();
+}
+function updateListBadge() {
+  const saved = getSavedTeams();
+  const badge = document.getElementById('list-badge');
+  if (saved.length > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = saved.length;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+updateListBadge(); // run on load
 
 // ============================================================
 // NAV TABS
-// Switching between Explore, My List, and Travel views.
-// The actual content for each tab will be built in later phases.
 // ============================================================
-
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', function() {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     this.classList.add('active');
-    // TODO: Phase 3/4 will swap sidebar content based on active tab
+    // My List and Travel tabs: coming in Phase 4 & 5
   });
 });
 </script>
-
 </body>
 </html>
