@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"> 
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -198,6 +198,134 @@
 
     /* ── TEAM PANEL (shown when a team is selected) ── */
     #team-panel { display: none; }
+
+    /* ── MY LIST VIEW ── */
+    #mylist-panel { display: none; }
+
+    .mylist-header {
+      padding: 14px 16px;
+      background: var(--color-surface2);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .mylist-header-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .mylist-header-sub {
+      font-size: 12px;
+      color: var(--color-muted);
+      margin-top: 3px;
+    }
+
+    /* Saved team chip row */
+    .saved-teams-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .saved-team-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px 5px 10px;
+      background: var(--color-surface2);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--color-text);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .saved-team-chip:hover { border-color: var(--color-accent); }
+    .saved-team-chip .chip-remove {
+      color: var(--color-muted);
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    .saved-team-chip .chip-remove:hover { color: #ff5252; }
+
+    /* Agenda date group */
+    .agenda-date-label {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-accent);
+      padding: 14px 16px 6px;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-bg);
+      position: sticky;
+      top: 0;
+    }
+
+    /* Agenda match entry */
+    .agenda-entry {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .agenda-time {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text);
+      min-width: 64px;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+    .agenda-body { flex: 1; }
+    .agenda-matchup {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text);
+      line-height: 1.4;
+    }
+    .agenda-matchup .saved-flag {
+      display: inline-block;
+      box-shadow: 0 0 0 1.5px var(--color-accent);
+      border-radius: 50%;
+      padding: 1px;
+    }
+    .agenda-sub { font-size: 11px; color: var(--color-muted); margin-top: 2px; }
+
+    /* Empty state for My List */
+    #mylist-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+      gap: 12px;
+      height: 100%;
+      min-height: 300px;
+    }
+    #mylist-empty h3 { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--color-text); }
+    #mylist-empty p { font-size: 13px; color: var(--color-muted); line-height: 1.6; }
+    .btn-browse {
+      margin-top: 6px;
+      padding: 8px 16px;
+      background: var(--color-accent-dim);
+      border: 1px solid var(--color-accent);
+      border-radius: 6px;
+      color: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-browse:hover { background: var(--color-accent-dim); filter: brightness(1.3); }
 
     .team-panel-header {
       padding: 14px 16px;
@@ -475,6 +603,17 @@
         <!-- Team panel — shown after a team is selected -->
         <div id="team-panel"></div>
 
+        <!-- My List panel — shown when My List tab is active -->
+        <div id="mylist-panel"></div>
+
+        <!-- My List empty state -->
+        <div id="mylist-empty" style="display:none">
+          <div class="empty-icon">📋</div>
+          <h3>Your list is empty</h3>
+          <p>Star any team from the Explore tab to add them here. We'll build you a personalized match agenda.</p>
+          <button class="btn-browse" id="btn-go-explore">Browse Teams</button>
+        </div>
+
       </div>
 
       <div id="legend">
@@ -665,11 +804,21 @@ document.addEventListener('click', e => {
 // TEAM SELECTION — the core Phase 3 feature
 // ============================================================
 let activeTeamId = null;
+let currentView = 'explore';
 
 function selectTeam(teamId) {
   activeTeamId = teamId;
   const team = teamMap[teamId];
   if (!team) return;
+
+  // Make sure we're showing the Explore view so the map route is visible
+  if (currentView !== 'explore') {
+    currentView = 'explore';
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
+    document.getElementById('mylist-panel').style.display = 'none';
+    document.getElementById('mylist-empty').style.display = 'none';
+  }
 
   // Clear previous route
   routeLayer.clearLayers();
@@ -871,6 +1020,11 @@ function clearTeamSelection() {
   activeTeamId = null;
   routeLayer.clearLayers();
   map.removeLayer(routeLayer);
+  currentView = 'explore';
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
+  document.getElementById('mylist-panel').style.display = 'none';
+  document.getElementById('mylist-empty').style.display = 'none';
   document.getElementById('team-panel').style.display  = 'none';
   document.getElementById('empty-state').style.display = 'flex';
   map.setView([33, -97], 4);
@@ -895,6 +1049,7 @@ function toggleSavedTeam(teamId) {
   }
   setSavedTeams(saved);
   updateListBadge();
+  if (currentView === 'mylist') renderMyList();
 }
 function updateListBadge() {
   const saved = getSavedTeams();
@@ -909,14 +1064,178 @@ function updateListBadge() {
 updateListBadge(); // run on load
 
 // ============================================================
+// VIEW SWITCHING — Explore / My List / Travel
+// ============================================================
+
+function setView(view) {
+  currentView = view;
+
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.nav-tab[data-tab="${view}"]`).classList.add('active');
+
+  // Hide all sidebar panels first
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('team-panel').style.display   = 'none';
+  document.getElementById('mylist-panel').style.display = 'none';
+  document.getElementById('mylist-empty').style.display = 'none';
+
+  if (view === 'explore') {
+    // Restore whichever explore state was active
+    if (activeTeamId) {
+      document.getElementById('team-panel').style.display = 'block';
+      if (!map.hasLayer(routeLayer)) map.addLayer(routeLayer);
+    } else {
+      document.getElementById('empty-state').style.display = 'flex';
+    }
+  }
+
+  if (view === 'mylist') {
+    // Clear any active route from the map while viewing My List
+    renderMyList();
+  }
+
+  if (view === 'travel') {
+    // Phase 5 — Travel leaderboard, not yet built
+    document.getElementById('empty-state').style.display = 'flex';
+  }
+}
+
+// ============================================================
+// MY LIST — agenda rendering
+// ============================================================
+function renderMyList() {
+  const savedIds = getSavedTeams();
+
+  if (savedIds.length === 0) {
+    document.getElementById('mylist-empty').style.display = 'flex';
+    document.getElementById('mylist-panel').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('mylist-empty').style.display = 'none';
+  document.getElementById('mylist-panel').style.display = 'block';
+
+  const savedTeams = savedIds.map(id => teamMap[id]).filter(Boolean);
+
+  // ── Saved team chips (click to jump to Explore view for that team) ──
+  const chipsHtml = savedTeams.map(t => `
+    <div class="saved-team-chip" data-id="${t.id}">
+      <span>${t.flagEmoji}</span>
+      <span>${t.name}</span>
+      <span class="chip-remove" data-remove="${t.id}" title="Remove">✕</span>
+    </div>
+  `).join('');
+
+  // ── Build a flat list of all matches for saved teams, deduplicated ──
+  // (in case two saved teams play each other, show it once)
+  const seenMatchIds = new Set();
+  const agendaMatches = [];
+
+  savedTeams.forEach(team => {
+    (team.matchIds || []).forEach(mid => {
+      if (seenMatchIds.has(mid)) return;
+      seenMatchIds.add(mid);
+      const m = matchMap[mid];
+      if (!m) return;
+      agendaMatches.push(m);
+    });
+  });
+
+  // Sort chronologically
+  agendaMatches.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  // Group by date
+  const groups = {};
+  agendaMatches.forEach(m => {
+    if (!groups[m.date]) groups[m.date] = [];
+    groups[m.date].push(m);
+  });
+
+  // ── Build agenda HTML ──
+  let agendaHtml = '';
+  Object.keys(groups).sort().forEach(date => {
+    const [y, mo, d] = date.split('-').map(Number);
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dt = new Date(y, mo - 1, d);
+    const dateLabel = `${days[dt.getDay()]}, ${months[mo-1]} ${d}`;
+
+    agendaHtml += `<div class="agenda-date-label">${dateLabel}</div>`;
+
+    groups[date].forEach(m => {
+      const t1 = teamMap[m.team1];
+      const t2 = teamMap[m.team2];
+      const v = venueMap[m.venueId];
+
+      // Highlight saved teams with a ring around their flag
+      const flag1 = savedIds.includes(m.team1) ? `<span class="saved-flag">${t1?.flagEmoji||''}</span>` : (t1?.flagEmoji||'');
+      const flag2 = savedIds.includes(m.team2) ? `<span class="saved-flag">${t2?.flagEmoji||''}</span>` : (t2?.flagEmoji||'');
+
+      // Format time
+      const [h, min] = m.time.split(':').map(Number);
+      const hour = h % 12 || 12;
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const minStr = min === 0 ? '' : `:${String(min).padStart(2,'0')}`;
+      const timeLabel = `${hour}${minStr} ${ampm}`;
+
+      const bcPills = (m.broadcasters || []).map(b =>
+        `<span class="broadcaster-pill">${b}</span>`
+      ).join('');
+
+      agendaHtml += `
+        <div class="agenda-entry">
+          <div class="agenda-time">${timeLabel}<br><span style="color:var(--color-muted);font-weight:400;font-size:10px;font-family:var(--font-body)">ET</span></div>
+          <div class="agenda-body">
+            <div class="agenda-matchup">${flag1} ${t1?.name||m.team1} vs ${flag2} ${t2?.name||m.team2}</div>
+            <div class="agenda-sub">Group ${m.group} · ${v?.name||''}, ${v?.city||''}</div>
+            <div class="broadcaster-list">${bcPills}</div>
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  // ── Assemble panel ──
+  document.getElementById('mylist-panel').innerHTML = `
+    <div class="mylist-header">
+      <div class="mylist-header-title">My List</div>
+      <div class="mylist-header-sub">${savedTeams.length} team${savedTeams.length === 1 ? '' : 's'} · ${agendaMatches.length} upcoming match${agendaMatches.length === 1 ? '' : 'es'}</div>
+    </div>
+    <div class="saved-teams-row">${chipsHtml}</div>
+    ${agendaHtml}
+  `;
+
+  // Click a chip → jump to Explore view for that team
+  document.querySelectorAll('.saved-team-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      if (e.target.dataset.remove) return; // ignore if clicking the X
+      setView('explore');
+      selectTeam(chip.dataset.id);
+    });
+  });
+
+  // Click the X → remove from My List
+  document.querySelectorAll('.chip-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSavedTeam(btn.dataset.remove);
+    });
+  });
+}
+
+// ============================================================
 // NAV TABS
 // ============================================================
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', function() {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    this.classList.add('active');
-    // My List and Travel tabs: coming in Phase 4 & 5
+    setView(this.dataset.tab);
   });
+});
+
+// "Browse Teams" button in My List empty state → jump to Explore
+document.getElementById('btn-go-explore').addEventListener('click', () => {
+  setView('explore');
+  document.getElementById('team-search').focus();
 });
 </script>
 </body>
