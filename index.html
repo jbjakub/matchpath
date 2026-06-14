@@ -557,6 +557,41 @@
     }
     .layer-btn:hover { border-color: var(--color-accent); color: var(--color-text); }
     .layer-btn.active { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-dim); }
+
+    /* ── MOBILE RESPONSIVE ── */
+    @media (max-width: 768px) {
+      #main { flex-direction: column; }
+
+      /* Map on top, fixed height */
+      #map { height: 45vh; flex: none; }
+
+      /* Sidebar below, full width, remaining height */
+      #sidebar {
+        width: 100%;
+        height: calc(55vh - 52px);
+        border-right: none;
+        border-top: 2px solid var(--color-border);
+      }
+
+      /* Tighter header */
+      #header { padding: 0 10px; }
+      #logo-wordmark { font-size: 18px; }
+      .nav-tab { padding: 5px 8px; font-size: 11px; letter-spacing: 0.03em; }
+
+      /* Layer controls: keep in map area top-right */
+      #layer-controls { top: 58px; right: 8px; }
+      .layer-btn { padding: 5px 9px; font-size: 11px; }
+
+      /* Legend wraps tighter */
+      #legend { gap: 10px; padding: 8px 12px; }
+    }
+
+    /* Very small phones (iPhone SE etc.) */
+    @media (max-width: 390px) {
+      .nav-tab { padding: 4px 6px; font-size: 10px; }
+      #logo-wordmark { font-size: 16px; }
+      .tab-badge { width: 14px; height: 14px; font-size: 9px; }
+    }
   </style>
 </head>
 
@@ -586,7 +621,7 @@
       <div id="sidebar-header">
         <div id="sidebar-title">2026 FIFA World Cup</div>
         <div id="search-wrapper">
-          <input type="text" id="team-search" placeholder="Search for a team…" autocomplete="off" />
+          <input type="text" id="team-search" placeholder="Search teams or cities…" autocomplete="off" />
           <div id="search-dropdown"></div>
         </div>
       </div>
@@ -596,12 +631,15 @@
         <!-- Empty state — shown before any team is selected -->
         <div id="empty-state">
           <div class="empty-icon">⚽</div>
-          <h3>Select a team to begin</h3>
-          <p>Search for any of the 48 teams to see their training camp, match schedule, and travel route on the map.</p>
+          <h3>Select a team or city</h3>
+          <p>Search for any of the 48 teams to see their schedule and travel route, or search for a city to see all matches there.</p>
         </div>
 
         <!-- Team panel — shown after a team is selected -->
         <div id="team-panel"></div>
+
+        <!-- Venue panel — shown after a city/venue is selected -->
+        <div id="venue-panel" style="display:none"></div>
 
         <!-- My List panel — shown when My List tab is active -->
         <div id="mylist-panel"></div>
@@ -685,9 +723,9 @@ const teamMap   = Object.fromEntries(teams.map(t => [t.id, t]));
 // ============================================================
 const map = L.map('map', { center: [33, -97], zoom: 4, zoomControl: true });
 
-// OpenStreetMap tiles — free, no API key, always works
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+// CartoDB Dark Matter — dark tiles that match the app theme
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
   maxZoom: 19
 }).addTo(map);
 
@@ -737,6 +775,7 @@ venues.forEach(venue => {
     <div class="popup-subtitle">${venue.city}, ${venue.country}</div>
     <div class="popup-matches">${matchLines}${more}</div>
   `);
+  marker.on('click', () => selectVenue(venue.id));
   marker.addTo(venueLayer);
   venueMarkers[venue.id] = marker;
 });
@@ -776,19 +815,43 @@ const searchDropdown = document.getElementById('search-dropdown');
 searchInput.addEventListener('input', () => {
   const q = searchInput.value.trim().toLowerCase();
   if (!q) { searchDropdown.classList.remove('open'); return; }
-  const results = teams.filter(t => t.name.toLowerCase().includes(q)).slice(0, 8);
-  if (!results.length) { searchDropdown.classList.remove('open'); return; }
-  searchDropdown.innerHTML = results.map(t => `
-    <div class="dropdown-item" data-id="${t.id}">
+
+  const teamResults = teams.filter(t => t.name.toLowerCase().includes(q)).slice(0, 5);
+  const venueResults = venues.filter(v =>
+    v.name.toLowerCase().includes(q) || v.city.toLowerCase().includes(q)
+  ).slice(0, 4);
+
+  if (!teamResults.length && !venueResults.length) { searchDropdown.classList.remove('open'); return; }
+
+  const teamHtml = teamResults.map(t => `
+    <div class="dropdown-item" data-type="team" data-id="${t.id}">
       <span class="dropdown-flag">${t.flagEmoji}</span>
       <span class="dropdown-name">${t.name}</span>
       <span class="dropdown-group">Group ${t.group}</span>
     </div>
   `).join('');
+
+  const venueHtml = venueResults.map(v => {
+    const count = matches.filter(m => m.venueId === v.id).length;
+    return `
+      <div class="dropdown-item" data-type="venue" data-id="${v.id}">
+        <span class="dropdown-flag">🏟️</span>
+        <span class="dropdown-name">${v.city}</span>
+        <span class="dropdown-group">${count} matches</span>
+      </div>
+    `;
+  }).join('');
+
+  searchDropdown.innerHTML = teamHtml + venueHtml;
   searchDropdown.classList.add('open');
+
   searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
     el.addEventListener('click', () => {
-      selectTeam(el.dataset.id);
+      if (el.dataset.type === 'venue') {
+        selectVenue(el.dataset.id);
+      } else {
+        selectTeam(el.dataset.id);
+      }
       searchInput.value = '';
       searchDropdown.classList.remove('open');
     });
@@ -804,10 +867,12 @@ document.addEventListener('click', e => {
 // TEAM SELECTION — the core Phase 3 feature
 // ============================================================
 let activeTeamId = null;
+let activeVenueId = null;
 let currentView = 'explore';
 
 function selectTeam(teamId) {
   activeTeamId = teamId;
+  activeVenueId = null;
   const team = teamMap[teamId];
   if (!team) return;
 
@@ -1005,8 +1070,9 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
     ${itinerary}
   `;
 
-  // Show panel, hide empty state
+  // Show panel, hide empty state and venue panel
   document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('venue-panel').style.display  = 'none';
   document.getElementById('team-panel').style.display   = 'block';
 
   // Bookmark button handler
@@ -1018,16 +1084,119 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
 
 function clearTeamSelection() {
   activeTeamId = null;
+  activeVenueId = null;
   routeLayer.clearLayers();
   map.removeLayer(routeLayer);
   currentView = 'explore';
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
-  document.getElementById('mylist-panel').style.display = 'none';
-  document.getElementById('mylist-empty').style.display = 'none';
-  document.getElementById('team-panel').style.display  = 'none';
-  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('mylist-panel').style.display  = 'none';
+  document.getElementById('mylist-empty').style.display  = 'none';
+  document.getElementById('team-panel').style.display    = 'none';
+  document.getElementById('venue-panel').style.display   = 'none';
+  document.getElementById('empty-state').style.display   = 'flex';
   map.setView([33, -97], 4);
+}
+
+// ============================================================
+// VENUE SELECTION — show all matches at a city/venue
+// ============================================================
+function selectVenue(venueId) {
+  activeVenueId = venueId;
+  activeTeamId = null;
+
+  // Switch to explore view
+  if (currentView !== 'explore') {
+    currentView = 'explore';
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
+  }
+
+  // Clear team route if any
+  routeLayer.clearLayers();
+  map.removeLayer(routeLayer);
+
+  const venue = venueMap[venueId];
+  if (!venue) return;
+
+  // Zoom to the venue
+  map.setView([venue.lat, venue.lng], 11);
+
+  renderVenuePanel(venue);
+}
+
+function renderVenuePanel(venue) {
+  const venueMatches = matches
+    .filter(m => m.venueId === venue.id)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  // Group by date
+  const groups = {};
+  venueMatches.forEach(m => {
+    if (!groups[m.date]) groups[m.date] = [];
+    groups[m.date].push(m);
+  });
+
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  let matchesHtml = '';
+  Object.keys(groups).sort().forEach(date => {
+    const [y, mo, d] = date.split('-').map(Number);
+    const dt = new Date(y, mo - 1, d);
+    matchesHtml += `<div class="agenda-date-label">${days[dt.getDay()]}, ${months[mo-1]} ${d}</div>`;
+
+    groups[date].forEach((m, i) => {
+      const t1 = teamMap[m.team1];
+      const t2 = teamMap[m.team2];
+      const [h, min] = m.time.split(':').map(Number);
+      const hour = h % 12 || 12;
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const minStr = min === 0 ? '' : `:${String(min).padStart(2,'0')}`;
+      const bcPills = (m.broadcasters || []).map(b => `<span class="broadcaster-pill">${b}</span>`).join('');
+
+      matchesHtml += `
+        <div class="agenda-entry" style="cursor:pointer" onclick="selectTeam('${m.team1}')">
+          <div class="agenda-time">${hour}${minStr} ${ampm}<br><span style="color:var(--color-muted);font-weight:400;font-size:10px;font-family:var(--font-body)">ET</span></div>
+          <div class="agenda-body">
+            <div class="agenda-matchup">${t1?.flagEmoji||''} ${t1?.name||m.team1} vs ${t2?.flagEmoji||''} ${t2?.name||m.team2}</div>
+            <div class="agenda-sub">Group ${m.group}</div>
+            <div class="broadcaster-list">${bcPills}</div>
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  document.getElementById('venue-panel').innerHTML = `
+    <div class="team-panel-header">
+      <div class="team-panel-flag">🏟️</div>
+      <div class="team-panel-info">
+        <div class="team-panel-name">${venue.name}</div>
+        <div class="team-panel-meta">${venue.city}, ${venue.country} · ${venueMatches.length} matches</div>
+      </div>
+    </div>
+    <div class="travel-stats">
+      <div class="travel-stat">
+        <div class="stat-value">${venueMatches.length}</div>
+        <div class="stat-label">Group matches</div>
+      </div>
+      <div class="travel-stat">
+        <div class="stat-value">${new Set(venueMatches.map(m => m.date)).size}</div>
+        <div class="stat-label">Match days</div>
+      </div>
+      <div class="travel-stat">
+        <div class="stat-value">${new Set(venueMatches.flatMap(m => [m.team1, m.team2])).size}</div>
+        <div class="stat-label">Teams visiting</div>
+      </div>
+    </div>
+    <div class="section-label">Match schedule · tap a match to see team route</div>
+    ${matchesHtml}
+  `;
+
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('team-panel').style.display   = 'none';
+  document.getElementById('venue-panel').style.display  = 'block';
 }
 
 // ============================================================
@@ -1076,6 +1245,7 @@ function setView(view) {
   // Hide all sidebar panels first
   document.getElementById('empty-state').style.display  = 'none';
   document.getElementById('team-panel').style.display   = 'none';
+  document.getElementById('venue-panel').style.display  = 'none';
   document.getElementById('mylist-panel').style.display = 'none';
   document.getElementById('mylist-empty').style.display = 'none';
 
@@ -1084,6 +1254,8 @@ function setView(view) {
     if (activeTeamId) {
       document.getElementById('team-panel').style.display = 'block';
       if (!map.hasLayer(routeLayer)) map.addLayer(routeLayer);
+    } else if (activeVenueId) {
+      document.getElementById('venue-panel').style.display = 'block';
     } else {
       document.getElementById('empty-state').style.display = 'flex';
     }
