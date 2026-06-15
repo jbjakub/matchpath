@@ -199,6 +199,9 @@
     /* ── TEAM PANEL (shown when a team is selected) ── */
     #team-panel { display: none; }
 
+    /* ── VENUE PANEL (shown when a city/venue is selected) ── */
+    #venue-panel { display: none; }
+
     /* ── MY LIST VIEW ── */
     #mylist-panel { display: none; }
 
@@ -628,7 +631,7 @@
 
       <div id="sidebar-content">
 
-        <!-- Empty state — shown before any team is selected -->
+        <!-- Empty state — shown before any selection -->
         <div id="empty-state">
           <div class="empty-icon">⚽</div>
           <h3>Select a team or city</h3>
@@ -680,11 +683,9 @@
 <script>
 // ============================================================
 // UTILITY: DISTANCE CALCULATION
-// Haversine formula — calculates straight-line distance
-// between two GPS coordinates in miles.
 // ============================================================
 function distanceMiles(lat1, lng1, lat2, lng2) {
-  const R = 3958.8; // Earth radius in miles
+  const R = 3958.8;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2)
@@ -698,7 +699,6 @@ function formatMiles(m) {
 }
 
 function formatDate(dateStr, timeStr) {
-  // Convert "2026-06-11" + "15:00" to "Thu Jun 11 · 3:00 PM ET"
   const [y, mo, d] = dateStr.split('-').map(Number);
   const [h, min] = timeStr.split(':').map(Number);
   const dt = new Date(y, mo - 1, d, h, min);
@@ -712,7 +712,6 @@ function formatDate(dateStr, timeStr) {
 
 // ============================================================
 // BUILD LOOKUP MAPS
-// Quick access to venues and matches by ID
 // ============================================================
 const venueMap  = Object.fromEntries(venues.map(v => [v.id, v]));
 const matchMap  = Object.fromEntries(matches.map(m => [m.id, m]));
@@ -732,7 +731,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 // ── Layer groups ──
 const venueLayer   = L.layerGroup().addTo(map);
 const campLayer    = L.layerGroup().addTo(map);
-const routeLayer   = L.layerGroup(); // team travel route — not added by default
+const routeLayer   = L.layerGroup();
 
 // ── Icon factories ──
 function makeCircleIcon(color, size, pulse = false) {
@@ -750,17 +749,15 @@ function makeCircleIcon(color, size, pulse = false) {
   });
 }
 
-const venueIcon    = makeCircleIcon('#00d4ff', 14);
-const campIcon     = makeCircleIcon('#00e676', 10);
+const venueIcon         = makeCircleIcon('#00d4ff', 14);
+const campIcon          = makeCircleIcon('#00e676', 10);
 const selectedVenueIcon = makeCircleIcon('#00d4ff', 18, true);
 const selectedCampIcon  = makeCircleIcon('#00e676', 14, true);
-const possibleIcon = makeCircleIcon('#ffab40', 12, true);
+const possibleIcon      = makeCircleIcon('#ffab40', 12, true);
 
 // ── Render base markers ──
-// Store references so we can open popups on click from sidebar
 const venueMarkers = {};
 venues.forEach(venue => {
-  // Count how many group stage matches happen here
   const venueMatches = matches.filter(m => m.venueId === venue.id);
   const matchLines = venueMatches.slice(0,4).map(m => {
     const t1 = teamMap[m.team1]?.name || m.team1;
@@ -807,7 +804,7 @@ document.getElementById('btn-camps').addEventListener('click', function() {
 });
 
 // ============================================================
-// SEARCH / AUTOCOMPLETE
+// SEARCH / AUTOCOMPLETE — teams and venues
 // ============================================================
 const searchInput    = document.getElementById('team-search');
 const searchDropdown = document.getElementById('search-dropdown');
@@ -816,7 +813,7 @@ searchInput.addEventListener('input', () => {
   const q = searchInput.value.trim().toLowerCase();
   if (!q) { searchDropdown.classList.remove('open'); return; }
 
-  const teamResults = teams.filter(t => t.name.toLowerCase().includes(q)).slice(0, 5);
+  const teamResults  = teams.filter(t => t.name.toLowerCase().includes(q)).slice(0, 5);
   const venueResults = venues.filter(v =>
     v.name.toLowerCase().includes(q) || v.city.toLowerCase().includes(q)
   ).slice(0, 4);
@@ -858,25 +855,26 @@ searchInput.addEventListener('input', () => {
   });
 });
 
-// Close dropdown when clicking outside
 document.addEventListener('click', e => {
   if (!e.target.closest('#search-wrapper')) searchDropdown.classList.remove('open');
 });
 
 // ============================================================
-// TEAM SELECTION — the core Phase 3 feature
+// STATE
 // ============================================================
-let activeTeamId = null;
+let activeTeamId  = null;
 let activeVenueId = null;
-let currentView = 'explore';
+let currentView   = 'explore';
 
+// ============================================================
+// TEAM SELECTION
+// ============================================================
 function selectTeam(teamId) {
-  activeTeamId = teamId;
+  activeTeamId  = teamId;
   activeVenueId = null;
   const team = teamMap[teamId];
   if (!team) return;
 
-  // Make sure we're showing the Explore view so the map route is visible
   if (currentView !== 'explore') {
     currentView = 'explore';
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -885,46 +883,32 @@ function selectTeam(teamId) {
     document.getElementById('mylist-empty').style.display = 'none';
   }
 
-  // Clear previous route
   routeLayer.clearLayers();
   map.removeLayer(routeLayer);
   map.addLayer(routeLayer);
 
-  // Build the team's ordered stops: training camp + group stage matches
-  // sorted by date, plus knockout placeholders
   const teamMatches = (team.matchIds || [])
     .map(id => matchMap[id])
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-  // Build a list of stops with coordinates for drawing the path
   const tc = team.trainingCamp;
-  const stops = [
-    { type: 'camp', lat: tc.lat, lng: tc.lng }
-  ];
+  const stops = [{ type: 'camp', lat: tc.lat, lng: tc.lng }];
   teamMatches.forEach(m => {
     const v = venueMap[m.venueId];
     if (v) stops.push({ type: 'match', lat: v.lat, lng: v.lng });
   });
 
-  // Draw dashed route line between stops
   if (stops.length > 1) {
-    const latlngs = stops.map(s => [s.lat, s.lng]);
-    L.polyline(latlngs, {
-      color: '#00d4ff',
-      weight: 2,
-      opacity: 0.6,
-      dashArray: '6 6'
+    L.polyline(stops.map(s => [s.lat, s.lng]), {
+      color: '#00d4ff', weight: 2, opacity: 0.6, dashArray: '6 6'
     }).addTo(routeLayer);
   }
 
-  // Draw highlighted markers for this team's stops
-  // Training camp
   L.marker([tc.lat, tc.lng], { icon: selectedCampIcon, zIndexOffset: 500 })
     .bindPopup(`<div class="popup-title">${team.flagEmoji} ${team.name}</div><div class="popup-subtitle">⛺ Training camp · ${tc.name}</div>`)
     .addTo(routeLayer);
 
-  // Match venues (confirmed)
   teamMatches.forEach((m, i) => {
     const v = venueMap[m.venueId];
     if (!v) return;
@@ -940,21 +924,17 @@ function selectTeam(teamId) {
       .addTo(routeLayer);
   });
 
-  // Fit map to show the full route
   if (stops.length > 1) {
-    const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
-    map.fitBounds(bounds, { padding: [60, 60] });
+    map.fitBounds(L.latLngBounds(stops.map(s => [s.lat, s.lng])), { padding: [60, 60] });
   } else if (stops.length === 1) {
     map.setView([stops[0].lat, stops[0].lng], 6);
   }
 
-  // ── Calculate total travel distance ──
   let totalMiles = 0;
   for (let i = 1; i < stops.length; i++) {
     totalMiles += distanceMiles(stops[i-1].lat, stops[i-1].lng, stops[i].lat, stops[i].lng);
   }
 
-  // ── Build sidebar itinerary ──
   renderTeamPanel(team, teamMatches, totalMiles);
 }
 
@@ -962,11 +942,7 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
   const tc = team.trainingCamp;
   const isSaved = getSavedTeams().includes(team.id);
 
-  // Build itinerary HTML stop by stop
-  let itinerary = '';
-
-  // Training camp stop
-  itinerary += `
+  let itinerary = `
     <div class="section-label">Journey</div>
     <div class="camp-row">
       <div class="stop-icon camp">⛺</div>
@@ -977,35 +953,22 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
     </div>
   `;
 
-  // Each group stage match
   let prevLat = tc.lat, prevLng = tc.lng;
   teamMatches.forEach((m, i) => {
     const v = venueMap[m.venueId];
     if (!v) return;
     const dist = distanceMiles(prevLat, prevLng, v.lat, v.lng);
     const isHome = teamMap[m.team1]?.id === team.id;
-    const opponent = isHome
-      ? (teamMap[m.team2]?.name || m.team2)
-      : (teamMap[m.team1]?.name || m.team1);
-    const oppFlag = isHome
-      ? (teamMap[m.team2]?.flagEmoji || '')
-      : (teamMap[m.team1]?.flagEmoji || '');
+    const opponent = isHome ? (teamMap[m.team2]?.name || m.team2) : (teamMap[m.team1]?.name || m.team1);
+    const oppFlag  = isHome ? (teamMap[m.team2]?.flagEmoji || '') : (teamMap[m.team1]?.flagEmoji || '');
+    const bcPills  = (m.broadcasters || []).map(b => `<span class="broadcaster-pill">${b}</span>`).join('');
 
-    // Distance connector
     itinerary += `
       <div class="distance-connector">
         <div class="distance-line"></div>
         <span>${formatMiles(dist)}</span>
         <div class="distance-line"></div>
       </div>
-    `;
-
-    // Match stop
-    const bcPills = (m.broadcasters || []).map(b =>
-      `<span class="broadcaster-pill">${b}</span>`
-    ).join('');
-
-    itinerary += `
       <div class="match-row">
         <div class="stop-icon match">${i + 1}</div>
         <div class="stop-body">
@@ -1017,12 +980,9 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
         <span class="stop-badge confirmed">Group ${m.group}</span>
       </div>
     `;
-
-    prevLat = v.lat;
-    prevLng = v.lng;
+    prevLat = v.lat; prevLng = v.lng;
   });
 
-  // Knockout placeholder
   itinerary += `
     <div class="distance-connector">
       <div class="distance-line"></div>
@@ -1033,13 +993,12 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
       <div class="stop-icon possible">?</div>
       <div class="stop-body">
         <div class="stop-title" style="color:var(--color-possible)">Round of 32 onwards</div>
-        <div class="stop-sub">Knockout venues determined by group standings. Full bracket visible in the Travel tab.</div>
+        <div class="stop-sub">Knockout venues determined by group standings.</div>
       </div>
       <span class="stop-badge possible">Possible</span>
     </div>
   `;
 
-  // Assemble full panel
   document.getElementById('team-panel').innerHTML = `
     <div class="team-panel-header">
       <div class="team-panel-flag">${team.flagEmoji}</div>
@@ -1051,51 +1010,22 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
         ${isSaved ? '★' : '☆'}
       </button>
     </div>
-
     <div class="travel-stats">
-      <div class="travel-stat">
-        <div class="stat-value">${Math.round(totalMiles).toLocaleString()}</div>
-        <div class="stat-label">Miles confirmed</div>
-      </div>
-      <div class="travel-stat">
-        <div class="stat-value">${teamMatches.length}</div>
-        <div class="stat-label">Group matches</div>
-      </div>
-      <div class="travel-stat">
-        <div class="stat-value">${new Set(teamMatches.map(m => m.venueId)).size}</div>
-        <div class="stat-label">Venues</div>
-      </div>
+      <div class="travel-stat"><div class="stat-value">${Math.round(totalMiles).toLocaleString()}</div><div class="stat-label">Miles confirmed</div></div>
+      <div class="travel-stat"><div class="stat-value">${teamMatches.length}</div><div class="stat-label">Group matches</div></div>
+      <div class="travel-stat"><div class="stat-value">${new Set(teamMatches.map(m => m.venueId)).size}</div><div class="stat-label">Venues</div></div>
     </div>
-
     ${itinerary}
   `;
 
-  // Show panel, hide empty state and venue panel
   document.getElementById('empty-state').style.display  = 'none';
   document.getElementById('venue-panel').style.display  = 'none';
   document.getElementById('team-panel').style.display   = 'block';
 
-  // Bookmark button handler
   document.getElementById('btn-bookmark').addEventListener('click', () => {
     toggleSavedTeam(team.id);
-    renderTeamPanel(team, teamMatches, totalMiles); // re-render to update button state
+    renderTeamPanel(team, teamMatches, totalMiles);
   });
-}
-
-function clearTeamSelection() {
-  activeTeamId = null;
-  activeVenueId = null;
-  routeLayer.clearLayers();
-  map.removeLayer(routeLayer);
-  currentView = 'explore';
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
-  document.getElementById('mylist-panel').style.display  = 'none';
-  document.getElementById('mylist-empty').style.display  = 'none';
-  document.getElementById('team-panel').style.display    = 'none';
-  document.getElementById('venue-panel').style.display   = 'none';
-  document.getElementById('empty-state').style.display   = 'flex';
-  map.setView([33, -97], 4);
 }
 
 // ============================================================
@@ -1103,25 +1033,21 @@ function clearTeamSelection() {
 // ============================================================
 function selectVenue(venueId) {
   activeVenueId = venueId;
-  activeTeamId = null;
+  activeTeamId  = null;
 
-  // Switch to explore view
   if (currentView !== 'explore') {
     currentView = 'explore';
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
   }
 
-  // Clear team route if any
   routeLayer.clearLayers();
   map.removeLayer(routeLayer);
 
   const venue = venueMap[venueId];
   if (!venue) return;
 
-  // Zoom to the venue
   map.setView([venue.lat, venue.lng], 11);
-
   renderVenuePanel(venue);
 }
 
@@ -1130,14 +1056,13 @@ function renderVenuePanel(venue) {
     .filter(m => m.venueId === venue.id)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-  // Group by date
   const groups = {};
   venueMatches.forEach(m => {
     if (!groups[m.date]) groups[m.date] = [];
     groups[m.date].push(m);
   });
 
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   let matchesHtml = '';
@@ -1146,12 +1071,12 @@ function renderVenuePanel(venue) {
     const dt = new Date(y, mo - 1, d);
     matchesHtml += `<div class="agenda-date-label">${days[dt.getDay()]}, ${months[mo-1]} ${d}</div>`;
 
-    groups[date].forEach((m, i) => {
+    groups[date].forEach(m => {
       const t1 = teamMap[m.team1];
       const t2 = teamMap[m.team2];
       const [h, min] = m.time.split(':').map(Number);
-      const hour = h % 12 || 12;
-      const ampm = h < 12 ? 'AM' : 'PM';
+      const hour   = h % 12 || 12;
+      const ampm   = h < 12 ? 'AM' : 'PM';
       const minStr = min === 0 ? '' : `:${String(min).padStart(2,'0')}`;
       const bcPills = (m.broadcasters || []).map(b => `<span class="broadcaster-pill">${b}</span>`).join('');
 
@@ -1177,18 +1102,9 @@ function renderVenuePanel(venue) {
       </div>
     </div>
     <div class="travel-stats">
-      <div class="travel-stat">
-        <div class="stat-value">${venueMatches.length}</div>
-        <div class="stat-label">Group matches</div>
-      </div>
-      <div class="travel-stat">
-        <div class="stat-value">${new Set(venueMatches.map(m => m.date)).size}</div>
-        <div class="stat-label">Match days</div>
-      </div>
-      <div class="travel-stat">
-        <div class="stat-value">${new Set(venueMatches.flatMap(m => [m.team1, m.team2])).size}</div>
-        <div class="stat-label">Teams visiting</div>
-      </div>
+      <div class="travel-stat"><div class="stat-value">${venueMatches.length}</div><div class="stat-label">Group matches</div></div>
+      <div class="travel-stat"><div class="stat-value">${new Set(venueMatches.map(m => m.date)).size}</div><div class="stat-label">Match days</div></div>
+      <div class="travel-stat"><div class="stat-value">${new Set(venueMatches.flatMap(m => [m.team1, m.team2])).size}</div><div class="stat-label">Teams visiting</div></div>
     </div>
     <div class="section-label">Match schedule · tap a match to see team route</div>
     ${matchesHtml}
@@ -1197,6 +1113,25 @@ function renderVenuePanel(venue) {
   document.getElementById('empty-state').style.display  = 'none';
   document.getElementById('team-panel').style.display   = 'none';
   document.getElementById('venue-panel').style.display  = 'block';
+}
+
+// ============================================================
+// CLEAR SELECTION
+// ============================================================
+function clearTeamSelection() {
+  activeTeamId  = null;
+  activeVenueId = null;
+  routeLayer.clearLayers();
+  map.removeLayer(routeLayer);
+  currentView = 'explore';
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.nav-tab[data-tab="explore"]').classList.add('active');
+  document.getElementById('mylist-panel').style.display  = 'none';
+  document.getElementById('mylist-empty').style.display  = 'none';
+  document.getElementById('team-panel').style.display    = 'none';
+  document.getElementById('venue-panel').style.display   = 'none';
+  document.getElementById('empty-state').style.display   = 'flex';
+  map.setView([33, -97], 4);
 }
 
 // ============================================================
@@ -1211,11 +1146,7 @@ function setSavedTeams(arr) {
 }
 function toggleSavedTeam(teamId) {
   let saved = getSavedTeams();
-  if (saved.includes(teamId)) {
-    saved = saved.filter(id => id !== teamId);
-  } else {
-    saved.push(teamId);
-  }
+  saved = saved.includes(teamId) ? saved.filter(id => id !== teamId) : [...saved, teamId];
   setSavedTeams(saved);
   updateListBadge();
   if (currentView === 'mylist') renderMyList();
@@ -1230,19 +1161,17 @@ function updateListBadge() {
     badge.style.display = 'none';
   }
 }
-updateListBadge(); // run on load
+updateListBadge();
 
 // ============================================================
-// VIEW SWITCHING — Explore / My List / Travel
+// VIEW SWITCHING
 // ============================================================
-
 function setView(view) {
   currentView = view;
 
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.nav-tab[data-tab="${view}"]`).classList.add('active');
 
-  // Hide all sidebar panels first
   document.getElementById('empty-state').style.display  = 'none';
   document.getElementById('team-panel').style.display   = 'none';
   document.getElementById('venue-panel').style.display  = 'none';
@@ -1250,7 +1179,6 @@ function setView(view) {
   document.getElementById('mylist-empty').style.display = 'none';
 
   if (view === 'explore') {
-    // Restore whichever explore state was active
     if (activeTeamId) {
       document.getElementById('team-panel').style.display = 'block';
       if (!map.hasLayer(routeLayer)) map.addLayer(routeLayer);
@@ -1262,12 +1190,10 @@ function setView(view) {
   }
 
   if (view === 'mylist') {
-    // Clear any active route from the map while viewing My List
     renderMyList();
   }
 
   if (view === 'travel') {
-    // Phase 5 — Travel leaderboard, not yet built
     document.getElementById('empty-state').style.display = 'flex';
   }
 }
@@ -1289,7 +1215,6 @@ function renderMyList() {
 
   const savedTeams = savedIds.map(id => teamMap[id]).filter(Boolean);
 
-  // ── Saved team chips (click to jump to Explore view for that team) ──
   const chipsHtml = savedTeams.map(t => `
     <div class="saved-team-chip" data-id="${t.id}">
       <span>${t.flagEmoji}</span>
@@ -1298,65 +1223,48 @@ function renderMyList() {
     </div>
   `).join('');
 
-  // ── Build a flat list of all matches for saved teams, deduplicated ──
-  // (in case two saved teams play each other, show it once)
   const seenMatchIds = new Set();
   const agendaMatches = [];
-
   savedTeams.forEach(team => {
     (team.matchIds || []).forEach(mid => {
       if (seenMatchIds.has(mid)) return;
       seenMatchIds.add(mid);
       const m = matchMap[mid];
-      if (!m) return;
-      agendaMatches.push(m);
+      if (m) agendaMatches.push(m);
     });
   });
-
-  // Sort chronologically
   agendaMatches.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-  // Group by date
   const groups = {};
   agendaMatches.forEach(m => {
     if (!groups[m.date]) groups[m.date] = [];
     groups[m.date].push(m);
   });
 
-  // ── Build agenda HTML ──
+  const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
   let agendaHtml = '';
   Object.keys(groups).sort().forEach(date => {
     const [y, mo, d] = date.split('-').map(Number);
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const dt = new Date(y, mo - 1, d);
-    const dateLabel = `${days[dt.getDay()]}, ${months[mo-1]} ${d}`;
-
-    agendaHtml += `<div class="agenda-date-label">${dateLabel}</div>`;
+    agendaHtml += `<div class="agenda-date-label">${days[dt.getDay()]}, ${months[mo-1]} ${d}</div>`;
 
     groups[date].forEach(m => {
       const t1 = teamMap[m.team1];
       const t2 = teamMap[m.team2];
-      const v = venueMap[m.venueId];
-
-      // Highlight saved teams with a ring around their flag
+      const v  = venueMap[m.venueId];
       const flag1 = savedIds.includes(m.team1) ? `<span class="saved-flag">${t1?.flagEmoji||''}</span>` : (t1?.flagEmoji||'');
       const flag2 = savedIds.includes(m.team2) ? `<span class="saved-flag">${t2?.flagEmoji||''}</span>` : (t2?.flagEmoji||'');
-
-      // Format time
       const [h, min] = m.time.split(':').map(Number);
-      const hour = h % 12 || 12;
-      const ampm = h < 12 ? 'AM' : 'PM';
+      const hour   = h % 12 || 12;
+      const ampm   = h < 12 ? 'AM' : 'PM';
       const minStr = min === 0 ? '' : `:${String(min).padStart(2,'0')}`;
-      const timeLabel = `${hour}${minStr} ${ampm}`;
-
-      const bcPills = (m.broadcasters || []).map(b =>
-        `<span class="broadcaster-pill">${b}</span>`
-      ).join('');
+      const bcPills = (m.broadcasters || []).map(b => `<span class="broadcaster-pill">${b}</span>`).join('');
 
       agendaHtml += `
         <div class="agenda-entry">
-          <div class="agenda-time">${timeLabel}<br><span style="color:var(--color-muted);font-weight:400;font-size:10px;font-family:var(--font-body)">ET</span></div>
+          <div class="agenda-time">${hour}${minStr} ${ampm}<br><span style="color:var(--color-muted);font-weight:400;font-size:10px;font-family:var(--font-body)">ET</span></div>
           <div class="agenda-body">
             <div class="agenda-matchup">${flag1} ${t1?.name||m.team1} vs ${flag2} ${t2?.name||m.team2}</div>
             <div class="agenda-sub">Group ${m.group} · ${v?.name||''}, ${v?.city||''}</div>
@@ -1367,26 +1275,23 @@ function renderMyList() {
     });
   });
 
-  // ── Assemble panel ──
   document.getElementById('mylist-panel').innerHTML = `
     <div class="mylist-header">
       <div class="mylist-header-title">My List</div>
-      <div class="mylist-header-sub">${savedTeams.length} team${savedTeams.length === 1 ? '' : 's'} · ${agendaMatches.length} upcoming match${agendaMatches.length === 1 ? '' : 'es'}</div>
+      <div class="mylist-header-sub">${savedTeams.length} team${savedTeams.length === 1 ? '' : 's'} · ${agendaMatches.length} match${agendaMatches.length === 1 ? '' : 'es'}</div>
     </div>
     <div class="saved-teams-row">${chipsHtml}</div>
     ${agendaHtml}
   `;
 
-  // Click a chip → jump to Explore view for that team
   document.querySelectorAll('.saved-team-chip').forEach(chip => {
     chip.addEventListener('click', (e) => {
-      if (e.target.dataset.remove) return; // ignore if clicking the X
+      if (e.target.dataset.remove) return;
       setView('explore');
       selectTeam(chip.dataset.id);
     });
   });
 
-  // Click the X → remove from My List
   document.querySelectorAll('.chip-remove').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1404,7 +1309,6 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
   });
 });
 
-// "Browse Teams" button in My List empty state → jump to Explore
 document.getElementById('btn-go-explore').addEventListener('click', () => {
   setView('explore');
   document.getElementById('team-search').focus();
