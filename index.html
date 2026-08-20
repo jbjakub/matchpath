@@ -13,16 +13,21 @@
   <style>
     /* ── DESIGN TOKENS ── */
     :root {
-      --color-bg:         #0a0e1a;
-      --color-surface:    #131929;
-      --color-surface2:   #1a2236;
-      --color-border:     #1e2d45;
-      --color-accent:     #00d4ff;
-      --color-accent-dim: #00d4ff18;
-      --color-text:       #e8edf5;
-      --color-muted:      #6b7fa3;
-      --color-confirmed:  #00e676;
-      --color-possible:   #ffab40;
+      /* Light theme — cyan brand accent kept, deepened where it sits on text
+         for AA contrast; the brighter original cyan lives on as --color-accent-bright
+         for map markers / decorative dots where contrast rules don't apply. */
+      --color-bg:            #f4f7fb;
+      --color-surface:       #ffffff;
+      --color-surface2:      #eef2f8;
+      --color-border:        #dde4ee;
+      --color-accent:        #00819e;
+      --color-accent-bright: #00d4ff;
+      --color-accent-dim:    #00d4ff14;
+      --color-text:          #10182a;
+      --color-muted:         #64748b;
+      --color-confirmed:     #008a49;
+      --color-loss:          #e02f2f;
+      --color-possible:      #b36b00;
       --font-display: 'Barlow Condensed', sans-serif;
       --font-body:    'Inter', sans-serif;
     }
@@ -141,7 +146,7 @@
       z-index: 9999;
       max-height: 220px;
       overflow-y: auto;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 24px rgba(16,24,42,0.12);
     }
     #search-dropdown.open { display: block; }
 
@@ -202,6 +207,43 @@
     /* ── VENUE PANEL (shown when a city/venue is selected) ── */
     #venue-panel { display: none; }
 
+    /* ── TRAVEL TAB ── */
+    #travel-panel { display: none; }
+    .travel-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; border-bottom: 1px solid var(--color-border);
+      cursor: pointer; transition: background 0.1s;
+    }
+    .travel-row:hover { background: var(--color-accent-dim); }
+    .travel-rank {
+      font-family: var(--font-display); font-weight: 700; font-size: 12px;
+      color: var(--color-muted); width: 18px; text-align: right; flex-shrink: 0;
+    }
+    .travel-flag { font-size: 16px; flex-shrink: 0; }
+    .travel-body { flex: 1; min-width: 0; }
+    .travel-name { font-size: 12.5px; color: var(--color-text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .travel-bar-track { height: 4px; background: var(--color-border); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+    .travel-bar-fill { height: 100%; background: var(--color-accent-bright); border-radius: 2px; }
+    .travel-miles {
+      font-family: var(--font-display); font-size: 13px; font-weight: 700;
+      color: var(--color-accent); flex-shrink: 0; padding-left: 6px; white-space: nowrap;
+    }
+
+    .city-planner { padding: 12px 16px 24px; }
+    .city-planner-row { display: flex; align-items: center; gap: 8px; }
+    .city-planner-row select {
+      flex: 1; min-width: 0; padding: 8px 10px;
+      background: var(--color-bg); border: 1px solid var(--color-border);
+      border-radius: 6px; color: var(--color-text); font-family: var(--font-body); font-size: 12.5px;
+    }
+    .city-planner-arrow { color: var(--color-muted); font-size: 14px; flex-shrink: 0; }
+    .city-planner-result { margin-top: 18px; text-align: center; }
+    .city-planner-distance { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--color-accent); line-height: 1; }
+    .city-planner-sub { font-size: 12px; color: var(--color-muted); margin-top: 4px; }
+    .city-planner-stats { display: flex; margin-top: 16px; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
+    .city-planner-stat { flex: 1; padding: 10px 14px; text-align: center; border-right: 1px solid var(--color-border); }
+    .city-planner-stat:last-child { border-right: none; }
+
     /* ── MY LIST VIEW ── */
     #mylist-panel { display: none; }
 
@@ -250,7 +292,7 @@
       line-height: 1;
       padding: 0 2px;
     }
-    .saved-team-chip .chip-remove:hover { color: #ff5252; }
+    .saved-team-chip .chip-remove:hover { color: var(--color-loss); }
 
     /* Agenda date group */
     .agenda-date-label {
@@ -427,13 +469,15 @@
       flex-shrink: 0;
       margin-top: 1px;
     }
-    .stop-icon.camp { background: #00e67620; color: var(--color-confirmed); border: 1.5px solid var(--color-confirmed); }
-    .stop-icon.match { background: #00d4ff20; color: var(--color-accent); border: 1.5px solid var(--color-accent); }
-    .stop-icon.possible { background: #ffab4020; color: var(--color-possible); border: 1.5px solid var(--color-possible); }
+    .stop-icon.camp  { background: #008a4914; color: var(--color-confirmed); border: 1.5px solid var(--color-confirmed); }
+    .stop-icon.match.win  { background: #008a4914; color: var(--color-confirmed); border: 1.5px solid var(--color-confirmed); }
+    .stop-icon.match.loss { background: #e02f2f14; color: var(--color-loss);      border: 1.5px solid var(--color-loss); }
+    .stop-icon.match.draw { background: #b36b0014; color: var(--color-possible);  border: 1.5px solid var(--color-possible); }
 
-    .stop-body { flex: 1; }
+    .stop-body { flex: 1; min-width: 0; }
     .stop-title { font-size: 13px; font-weight: 500; color: var(--color-text); line-height: 1.3; }
     .stop-sub { font-size: 11px; color: var(--color-muted); margin-top: 2px; line-height: 1.4; }
+    .match-score { font-weight: 700; color: var(--color-accent); margin-left: 3px; white-space: nowrap; }
     .stop-badge {
       font-size: 10px;
       font-family: var(--font-display);
@@ -444,9 +488,30 @@
       border-radius: 3px;
       flex-shrink: 0;
       margin-top: 2px;
+      white-space: nowrap;
     }
-    .stop-badge.confirmed { background: #00e67618; color: var(--color-confirmed); border: 1px solid #00e67640; }
-    .stop-badge.possible  { background: #ffab4018; color: var(--color-possible);  border: 1px solid #ffab4040; }
+    .stop-badge.win  { background: #008a4914; color: var(--color-confirmed); border: 1px solid #008a4940; }
+    .stop-badge.loss { background: #e02f2f14; color: var(--color-loss);      border: 1px solid #e02f2f40; }
+    .stop-badge.draw { background: #b36b0014; color: var(--color-possible);  border: 1px solid #b36b0040; }
+
+    /* ── FINAL STATUS BANNER (bottom of team itinerary) ── */
+    .final-status { padding: 16px; text-align: center; border-top: 1px solid var(--color-border); }
+    .final-status-label {
+      font-family: var(--font-display); font-weight: 700; font-size: 14px; letter-spacing: 0.04em;
+      padding: 7px 16px; border-radius: 20px; display: inline-block;
+    }
+    .final-status--champion .final-status-label { background: #f6c60022; color: #a17a00; border: 1px solid #f6c60070; }
+    .final-status--runnerup .final-status-label { background: var(--color-accent-dim); color: var(--color-accent); border: 1px solid var(--color-accent); }
+    .final-status--eliminated .final-status-label { background: var(--color-surface2); color: var(--color-muted); border: 1px solid var(--color-border); }
+
+    /* ── STATUS CHIP (inline, next to team name) ── */
+    .status-chip {
+      font-family: var(--font-display); font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; padding: 2px 7px; border-radius: 10px; display: inline-block;
+    }
+    .status-chip--champion    { background: #f6c60022; color: #a17a00; border: 1px solid #f6c60070; }
+    .status-chip--runnerup    { background: var(--color-accent-dim); color: var(--color-accent); border: 1px solid var(--color-accent); }
+    .status-chip--eliminated  { background: var(--color-surface2); color: var(--color-muted); border: 1px solid var(--color-border); }
 
     /* Match stop row */
     .match-row {
@@ -512,19 +577,20 @@
     /* ── MAP ── */
     #map { flex: 1; background: var(--color-bg); }
 
-    .leaflet-container { background: #0d1520 !important; font-family: var(--font-body) !important; }
+    .leaflet-container { background: #e4e9f0 !important; font-family: var(--font-body) !important; }
     .leaflet-control-zoom { border: 1px solid var(--color-border) !important; border-radius: 6px !important; overflow: hidden; }
     .leaflet-control-zoom a { background: var(--color-surface) !important; color: var(--color-text) !important; border-bottom: 1px solid var(--color-border) !important; }
     .leaflet-control-zoom a:hover { background: var(--color-border) !important; }
-    .leaflet-control-attribution { background: rgba(10,14,26,0.8) !important; color: var(--color-muted) !important; font-size: 10px !important; }
+    .leaflet-control-attribution { background: rgba(255,255,255,0.85) !important; color: var(--color-muted) !important; font-size: 10px !important; }
     .leaflet-control-attribution a { color: var(--color-accent) !important; }
 
     .leaflet-popup-content-wrapper {
       background: var(--color-surface) !important;
       border: 1px solid var(--color-border) !important;
       border-radius: 8px !important;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+      box-shadow: 0 8px 32px rgba(16,24,42,0.18) !important;
       color: var(--color-text) !important;
+      max-width: min(280px, 80vw) !important;
     }
     .leaflet-popup-tip { background: var(--color-surface) !important; }
     .leaflet-popup-content { margin: 12px 14px !important; font-family: var(--font-body) !important; }
@@ -566,7 +632,7 @@
       #main { flex-direction: column; }
 
       /* Map on top, fixed height */
-      #map { height: 45vh; flex: none; }
+      #map { height: 45vh; flex: none; transition: height 0.15s ease; }
 
       /* Sidebar below, full width, remaining height */
       #sidebar {
@@ -576,24 +642,52 @@
         border-top: 2px solid var(--color-border);
       }
 
-      /* Tighter header */
+      /* My List / Travel don't need the map — give the list the full screen */
+      body.map-hidden-mobile #map { height: 0; min-height: 0; }
+      body.map-hidden-mobile #sidebar { height: calc(100vh - 52px); }
+      body.map-hidden-mobile #layer-controls { display: none; }
+
+      /* Tighter header, but keep tabs comfortably tappable (≥ ~40px target) */
       #header { padding: 0 10px; }
       #logo-wordmark { font-size: 18px; }
-      .nav-tab { padding: 5px 8px; font-size: 11px; letter-spacing: 0.03em; }
+      .nav-tab {
+        padding: 10px 10px;
+        font-size: 11px;
+        letter-spacing: 0.03em;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      /* Bigger tap targets for bookmark / chip-remove buttons */
+      .btn-bookmark { width: 38px; height: 38px; }
+      .chip-remove { padding: 6px 4px; margin: -6px -4px; }
+
+      /* Prevent iOS auto-zoom on focus: inputs/selects need >= 16px font */
+      #team-search, .city-planner-row select { font-size: 16px; }
 
       /* Layer controls: keep in map area top-right */
       #layer-controls { top: 58px; right: 8px; }
-      .layer-btn { padding: 5px 9px; font-size: 11px; }
+      .layer-btn { padding: 8px 10px; font-size: 11px; min-height: 36px; }
 
       /* Legend wraps tighter */
       #legend { gap: 10px; padding: 8px 12px; }
+
+      /* Travel tab: stack the city planner selects if needed, keep readable */
+      .city-planner-distance { font-size: 26px; }
+      .travel-miles { font-size: 12px; }
     }
 
     /* Very small phones (iPhone SE etc.) */
     @media (max-width: 390px) {
-      .nav-tab { padding: 4px 6px; font-size: 10px; }
+      .nav-tab { padding: 8px 6px; font-size: 10px; min-height: 38px; }
       #logo-wordmark { font-size: 16px; }
       .tab-badge { width: 14px; height: 14px; font-size: 9px; }
+
+      /* Selects get tight — let them wrap onto their own lines */
+      .city-planner-row { flex-wrap: wrap; }
+      .city-planner-row select { flex: 1 1 100%; }
+      .city-planner-arrow { flex: 1 1 100%; text-align: center; }
     }
   </style>
 </head>
@@ -633,9 +727,9 @@
 
         <!-- Empty state — shown before any selection -->
         <div id="empty-state">
-          <div class="empty-icon">⚽</div>
+          <div class="empty-icon">🏆</div>
           <h3>Select a team or city</h3>
-          <p>Search for any of the 48 teams to see their schedule and travel route, or search for a city to see all matches there.</p>
+          <p>The tournament is complete — Spain lifted the trophy on July 19. Search any of the 48 teams to relive their run, or search a city to see every match played there.</p>
         </div>
 
         <!-- Team panel — shown after a team is selected -->
@@ -655,13 +749,33 @@
           <button class="btn-browse" id="btn-go-explore">Browse Teams</button>
         </div>
 
+        <!-- Travel panel — shown when Travel tab is active -->
+        <div id="travel-panel" style="display:none">
+          <div class="mylist-header">
+            <div class="mylist-header-title">Travel</div>
+            <div class="mylist-header-sub">How far every team traveled, and the distance between any two host cities</div>
+          </div>
+
+          <div class="section-label">Team Travel Leaderboard · tap a team for their route</div>
+          <div id="travel-leaderboard"></div>
+
+          <div class="section-label">City-to-City Planner</div>
+          <div class="city-planner">
+            <div class="city-planner-row">
+              <select id="city-a"></select>
+              <span class="city-planner-arrow">→</span>
+              <select id="city-b"></select>
+            </div>
+            <div id="city-planner-result"></div>
+          </div>
+        </div>
+
       </div>
 
       <div id="legend">
         <div id="legend-title">Map Key</div>
         <div class="legend-row"><div class="legend-dot" style="background:#00d4ff"></div>Venue</div>
-        <div class="legend-row"><div class="legend-dot" style="background:#00e676"></div>Training camp</div>
-        <div class="legend-row"><div class="legend-dot" style="background:#ffab40"></div>Possible</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#008a49"></div>Training camp</div>
       </div>
 
     </aside>
@@ -675,7 +789,7 @@
     <div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div>Venues
   </button>
   <button class="layer-btn active" id="btn-camps">
-    <div style="width:8px;height:8px;border-radius:50%;background:#00e676;flex-shrink:0"></div>Training Camps
+    <div style="width:8px;height:8px;border-radius:50%;background:#008a49;flex-shrink:0"></div>Training Camps
   </button>
 </div>
 
@@ -711,6 +825,62 @@ function formatDate(dateStr, timeStr) {
 }
 
 // ============================================================
+// RESULTS — the tournament is complete, every match has a real score
+// ============================================================
+const STAGE_SHORT = {
+  'Round of 32': 'R32', 'Round of 16': 'R16', 'Quarterfinals': 'QF',
+  'Semifinals': 'SF', 'Third Place Play-off': '3rd Place', 'Final': 'Final'
+};
+
+function stageLabel(m) {
+  return m.group ? `Group ${m.group}` : m.stage;
+}
+function stageShort(m) {
+  return m.group ? `Grp ${m.group}` : (STAGE_SHORT[m.stage] || m.stage);
+}
+function scoreLine(m) {
+  if (!m.score) return '';
+  let s = `${m.score.team1}–${m.score.team2}`;
+  if (m.penalties) s += ` <span style="opacity:.65;font-weight:500">(${m.penalties.team1}–${m.penalties.team2} pens)</span>`;
+  else if (m.extraTime) s += ` <span style="opacity:.65;font-weight:500">(AET)</span>`;
+  return s;
+}
+// 'win' | 'loss' | 'draw' for a given team in a given match
+function resultFor(m, teamId) {
+  if (!m.score) return null;
+  if (m.winner === null) return 'draw';
+  return m.winner === teamId ? 'win' : 'loss';
+}
+// Where a team's tournament ended, as a { label, tone } chip
+function teamFinalStatus(team, teamMatches) {
+  if (!teamMatches.length) return null;
+  const last = teamMatches[teamMatches.length - 1];
+  if (team.id === championId) return { label: '🏆 Champions', tone: 'champion' };
+  if (last.id === 'F-104') return { label: 'Runner-up', tone: 'runnerup' };
+  if (last.id === '3P-103') {
+    return last.winner === team.id ? { label: '3rd Place', tone: 'runnerup' } : { label: '4th Place', tone: 'eliminated' };
+  }
+  if (teamMatches.length === 3) return { label: 'Did not advance', tone: 'eliminated' };
+  return { label: `Eliminated · ${stageLabel(last)}`, tone: 'eliminated' };
+}
+// Total miles a team traveled across its whole real tournament path
+function teamTotalMiles(team, teamMatches) {
+  const tc = team.trainingCamp;
+  let prevLat = tc.lat, prevLng = tc.lng, total = 0;
+  teamMatches.forEach(m => {
+    const v = venueMap[m.venueId];
+    if (!v) return;
+    total += distanceMiles(prevLat, prevLng, v.lat, v.lng);
+    prevLat = v.lat; prevLng = v.lng;
+  });
+  return total;
+}
+function teamMatchesFor(team) {
+  return (team.matchIds || []).map(id => matchMap[id]).filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+}
+
+// ============================================================
 // BUILD LOOKUP MAPS
 // ============================================================
 const venueMap  = Object.fromEntries(venues.map(v => [v.id, v]));
@@ -722,8 +892,8 @@ const teamMap   = Object.fromEntries(teams.map(t => [t.id, t]));
 // ============================================================
 const map = L.map('map', { center: [33, -97], zoom: 4, zoomControl: true });
 
-// CartoDB Dark Matter — dark tiles that match the app theme
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+// CartoDB Positron — light tiles that match the app theme
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
   maxZoom: 19
 }).addTo(map);
@@ -741,7 +911,7 @@ function makeCircleIcon(color, size, pulse = false) {
     className: '',
     html: `<svg width="${total}" height="${total}" viewBox="0 0 ${total} ${total}" xmlns="http://www.w3.org/2000/svg">
       ${pulseRing}
-      <circle cx="${total/2}" cy="${total/2}" r="${size/2}" fill="${color}" fill-opacity="0.9" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+      <circle cx="${total/2}" cy="${total/2}" r="${size/2}" fill="${color}" fill-opacity="0.95" stroke="rgba(16,24,42,0.25)" stroke-width="1.5"/>
     </svg>`,
     iconSize: [total, total],
     iconAnchor: [total/2, total/2],
@@ -750,10 +920,9 @@ function makeCircleIcon(color, size, pulse = false) {
 }
 
 const venueIcon         = makeCircleIcon('#00d4ff', 14);
-const campIcon          = makeCircleIcon('#00e676', 10);
+const campIcon          = makeCircleIcon('#008a49', 10);
 const selectedVenueIcon = makeCircleIcon('#00d4ff', 18, true);
-const selectedCampIcon  = makeCircleIcon('#00e676', 14, true);
-const possibleIcon      = makeCircleIcon('#ffab40', 12, true);
+const selectedCampIcon  = makeCircleIcon('#008a49', 14, true);
 
 // ── Render base markers ──
 const venueMarkers = {};
@@ -762,7 +931,7 @@ venues.forEach(venue => {
   const matchLines = venueMatches.slice(0,4).map(m => {
     const t1 = teamMap[m.team1]?.name || m.team1;
     const t2 = teamMap[m.team2]?.name || m.team2;
-    return `<div class="popup-match"><strong>${t1}</strong> vs <strong>${t2}</strong> <span style="color:var(--color-muted)">· ${m.date.slice(5).replace('-','/')}</span></div>`;
+    return `<div class="popup-match"><strong>${t1}</strong> ${scoreLine(m)} <strong>${t2}</strong> <span style="color:var(--color-muted)">· ${stageShort(m)}</span></div>`;
   }).join('');
   const more = venueMatches.length > 4 ? `<div class="popup-match" style="color:var(--color-muted)">+${venueMatches.length-4} more matches</div>` : '';
 
@@ -918,7 +1087,7 @@ function selectTeam(teamId) {
     L.marker([v.lat, v.lng], { icon: selectedVenueIcon, zIndexOffset: 500 })
       .bindPopup(`
         <div class="popup-title">${v.name}</div>
-        <div class="popup-subtitle">${team.flagEmoji} ${team.name} vs ${opponent}</div>
+        <div class="popup-subtitle">${team.flagEmoji} ${team.name} ${scoreLine(m)} ${opponent} · ${stageShort(m)}</div>
         <div class="popup-subtitle">${formatDate(m.date, m.time)}</div>
       `)
       .addTo(routeLayer);
@@ -962,6 +1131,8 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
     const opponent = isHome ? (teamMap[m.team2]?.name || m.team2) : (teamMap[m.team1]?.name || m.team1);
     const oppFlag  = isHome ? (teamMap[m.team2]?.flagEmoji || '') : (teamMap[m.team1]?.flagEmoji || '');
     const bcPills  = (m.broadcasters || []).map(b => `<span class="broadcaster-pill">${b}</span>`).join('');
+    const result   = resultFor(m, team.id);
+    const resultLetter = result === 'win' ? 'W' : result === 'loss' ? 'L' : 'D';
 
     itinerary += `
       <div class="distance-connector">
@@ -970,49 +1141,45 @@ function renderTeamPanel(team, teamMatches, totalMiles) {
         <div class="distance-line"></div>
       </div>
       <div class="match-row">
-        <div class="stop-icon match">${i + 1}</div>
+        <div class="stop-icon match ${result}">${resultLetter}</div>
         <div class="stop-body">
-          <div class="stop-title">vs ${oppFlag} ${opponent}</div>
+          <div class="stop-title">vs ${oppFlag} ${opponent} <span class="match-score">${scoreLine(m)}</span></div>
           <div class="stop-sub">${formatDate(m.date, m.time)}</div>
           <div class="stop-sub">${v.name}, ${v.city}</div>
           <div class="broadcaster-list">${bcPills}</div>
         </div>
-        <span class="stop-badge confirmed">Group ${m.group}</span>
+        <span class="stop-badge ${result}">${stageLabel(m)}</span>
       </div>
     `;
     prevLat = v.lat; prevLng = v.lng;
   });
 
-  itinerary += `
-    <div class="distance-connector">
-      <div class="distance-line"></div>
-      <span style="color:var(--color-possible)">if advancing</span>
-      <div class="distance-line"></div>
-    </div>
-    <div class="match-row">
-      <div class="stop-icon possible">?</div>
-      <div class="stop-body">
-        <div class="stop-title" style="color:var(--color-possible)">Round of 32 onwards</div>
-        <div class="stop-sub">Knockout venues determined by group standings.</div>
+  const finalStatus = teamFinalStatus(team, teamMatches);
+  if (finalStatus) {
+    itinerary += `
+      <div class="final-status final-status--${finalStatus.tone}">
+        <span class="final-status-label">${finalStatus.label}</span>
       </div>
-      <span class="stop-badge possible">Possible</span>
-    </div>
-  `;
+    `;
+  }
+
+  const statusChipHtml = finalStatus ? `<span class="status-chip status-chip--${finalStatus.tone}">${finalStatus.label}</span>` : '';
 
   document.getElementById('team-panel').innerHTML = `
     <div class="team-panel-header">
       <div class="team-panel-flag">${team.flagEmoji}</div>
       <div class="team-panel-info">
         <div class="team-panel-name">${team.name}</div>
-        <div class="team-panel-meta">Group ${team.group} · ${teamMatches.length} confirmed matches</div>
+        <div class="team-panel-meta">Group ${team.group} · ${teamMatches.length} matches played</div>
+        ${statusChipHtml ? `<div style="margin-top:5px">${statusChipHtml}</div>` : ''}
       </div>
       <button class="btn-bookmark ${isSaved ? 'saved' : ''}" id="btn-bookmark" title="${isSaved ? 'Remove from My List' : 'Add to My List'}">
         ${isSaved ? '★' : '☆'}
       </button>
     </div>
     <div class="travel-stats">
-      <div class="travel-stat"><div class="stat-value">${Math.round(totalMiles).toLocaleString()}</div><div class="stat-label">Miles confirmed</div></div>
-      <div class="travel-stat"><div class="stat-value">${teamMatches.length}</div><div class="stat-label">Group matches</div></div>
+      <div class="travel-stat"><div class="stat-value">${Math.round(totalMiles).toLocaleString()}</div><div class="stat-label">Total miles</div></div>
+      <div class="travel-stat"><div class="stat-value">${teamMatches.length}</div><div class="stat-label">Matches played</div></div>
       <div class="travel-stat"><div class="stat-value">${new Set(teamMatches.map(m => m.venueId)).size}</div><div class="stat-label">Venues</div></div>
     </div>
     ${itinerary}
@@ -1084,8 +1251,8 @@ function renderVenuePanel(venue) {
         <div class="agenda-entry" style="cursor:pointer" onclick="selectTeam('${m.team1}')">
           <div class="agenda-time">${hour}${minStr} ${ampm}<br><span style="color:var(--color-muted);font-weight:400;font-size:10px;font-family:var(--font-body)">ET</span></div>
           <div class="agenda-body">
-            <div class="agenda-matchup">${t1?.flagEmoji||''} ${t1?.name||m.team1} vs ${t2?.flagEmoji||''} ${t2?.name||m.team2}</div>
-            <div class="agenda-sub">Group ${m.group}</div>
+            <div class="agenda-matchup">${t1?.flagEmoji||''} ${t1?.name||m.team1} <span class="match-score">${scoreLine(m)}</span> ${t2?.flagEmoji||''} ${t2?.name||m.team2}</div>
+            <div class="agenda-sub">${stageLabel(m)}</div>
             <div class="broadcaster-list">${bcPills}</div>
           </div>
         </div>
@@ -1102,7 +1269,7 @@ function renderVenuePanel(venue) {
       </div>
     </div>
     <div class="travel-stats">
-      <div class="travel-stat"><div class="stat-value">${venueMatches.length}</div><div class="stat-label">Group matches</div></div>
+      <div class="travel-stat"><div class="stat-value">${venueMatches.length}</div><div class="stat-label">Matches hosted</div></div>
       <div class="travel-stat"><div class="stat-value">${new Set(venueMatches.map(m => m.date)).size}</div><div class="stat-label">Match days</div></div>
       <div class="travel-stat"><div class="stat-value">${new Set(venueMatches.flatMap(m => [m.team1, m.team2])).size}</div><div class="stat-label">Teams visiting</div></div>
     </div>
@@ -1130,7 +1297,9 @@ function clearTeamSelection() {
   document.getElementById('mylist-empty').style.display  = 'none';
   document.getElementById('team-panel').style.display    = 'none';
   document.getElementById('venue-panel').style.display   = 'none';
+  document.getElementById('travel-panel').style.display  = 'none';
   document.getElementById('empty-state').style.display   = 'flex';
+  document.body.classList.remove('map-hidden-mobile');
   map.setView([33, -97], 4);
 }
 
@@ -1177,6 +1346,11 @@ function setView(view) {
   document.getElementById('venue-panel').style.display  = 'none';
   document.getElementById('mylist-panel').style.display = 'none';
   document.getElementById('mylist-empty').style.display = 'none';
+  document.getElementById('travel-panel').style.display = 'none';
+
+  // On phones, the map only earns its space on Explore — My List and Travel
+  // are list-driven, so give the sidebar the full screen there instead.
+  document.body.classList.toggle('map-hidden-mobile', view !== 'explore');
 
   if (view === 'explore') {
     if (activeTeamId) {
@@ -1194,7 +1368,9 @@ function setView(view) {
   }
 
   if (view === 'travel') {
-    document.getElementById('empty-state').style.display = 'flex';
+    document.getElementById('travel-panel').style.display = 'block';
+    renderTravelLeaderboard();
+    renderCityPlanner();
   }
 }
 
@@ -1266,8 +1442,8 @@ function renderMyList() {
         <div class="agenda-entry">
           <div class="agenda-time">${hour}${minStr} ${ampm}<br><span style="color:var(--color-muted);font-weight:400;font-size:10px;font-family:var(--font-body)">ET</span></div>
           <div class="agenda-body">
-            <div class="agenda-matchup">${flag1} ${t1?.name||m.team1} vs ${flag2} ${t2?.name||m.team2}</div>
-            <div class="agenda-sub">Group ${m.group} · ${v?.name||''}, ${v?.city||''}</div>
+            <div class="agenda-matchup">${flag1} ${t1?.name||m.team1} <span class="match-score">${scoreLine(m)}</span> ${flag2} ${t2?.name||m.team2}</div>
+            <div class="agenda-sub">${stageLabel(m)} · ${v?.name||''}, ${v?.city||''}</div>
             <div class="broadcaster-list">${bcPills}</div>
           </div>
         </div>
@@ -1299,6 +1475,82 @@ function renderMyList() {
     });
   });
 }
+
+// ============================================================
+// TRAVEL TAB — team leaderboard + city-to-city planner
+// ============================================================
+function renderTravelLeaderboard() {
+  const rows = teams.map(team => {
+    const tMatches = teamMatchesFor(team);
+    const miles = teamTotalMiles(team, tMatches);
+    return { team, miles, matchCount: tMatches.length, status: teamFinalStatus(team, tMatches) };
+  }).sort((a, b) => b.miles - a.miles);
+
+  const max = rows.length ? rows[0].miles : 1;
+
+  document.getElementById('travel-leaderboard').innerHTML = rows.map((r, i) => `
+    <div class="travel-row" data-team="${r.team.id}">
+      <div class="travel-rank">${i + 1}</div>
+      <div class="travel-flag">${r.team.flagEmoji}</div>
+      <div class="travel-body">
+        <div class="travel-name">
+          ${r.team.name}
+          ${r.status ? `<span class="status-chip status-chip--${r.status.tone}">${r.status.label}</span>` : ''}
+        </div>
+        <div class="travel-bar-track"><div class="travel-bar-fill" style="width:${Math.max(4, r.miles / max * 100)}%"></div></div>
+      </div>
+      <div class="travel-miles">${formatMiles(r.miles)}</div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.travel-row').forEach(row => {
+    row.addEventListener('click', () => {
+      setView('explore');
+      selectTeam(row.dataset.team);
+    });
+  });
+}
+
+function renderCityPlanner() {
+  const aId = document.getElementById('city-a').value;
+  const bId = document.getElementById('city-b').value;
+  const a = venueMap[aId], b = venueMap[bId];
+  if (!a || !b) return;
+
+  const resultEl = document.getElementById('city-planner-result');
+  if (aId === bId) {
+    resultEl.innerHTML = `
+      <div class="city-planner-sub">Pick two different host cities to compare.</div>
+    `;
+    return;
+  }
+
+  const dist = distanceMiles(a.lat, a.lng, b.lat, b.lng);
+  const aMatches = matches.filter(m => m.venueId === aId).length;
+  const bMatches = matches.filter(m => m.venueId === bId).length;
+
+  resultEl.innerHTML = `
+    <div class="city-planner-distance">${formatMiles(dist)}</div>
+    <div class="city-planner-sub">between ${a.city} and ${b.city}</div>
+    <div class="city-planner-stats">
+      <div class="city-planner-stat"><div class="stat-value">${aMatches}</div><div class="stat-label">${a.city} matches</div></div>
+      <div class="city-planner-stat"><div class="stat-value">${bMatches}</div><div class="stat-label">${b.city} matches</div></div>
+    </div>
+  `;
+}
+
+(function initCityPlanner() {
+  const cityAEl = document.getElementById('city-a');
+  const cityBEl = document.getElementById('city-b');
+  const sortedVenues = [...venues].sort((a, b) => a.city.localeCompare(b.city));
+  const optionsHtml = sortedVenues.map(v => `<option value="${v.id}">${v.city}, ${v.country}</option>`).join('');
+  cityAEl.innerHTML = optionsHtml;
+  cityBEl.innerHTML = optionsHtml;
+  cityAEl.value = sortedVenues[0].id;
+  cityBEl.value = sortedVenues[1].id;
+  cityAEl.addEventListener('change', renderCityPlanner);
+  cityBEl.addEventListener('change', renderCityPlanner);
+})();
 
 // ============================================================
 // NAV TABS
