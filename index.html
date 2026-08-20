@@ -199,7 +199,7 @@
     }
     .empty-icon { font-size: 36px; opacity: 0.3; }
     #empty-state h3 { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--color-text); }
-    #empty-state p { font-size: 13px; color: var(--color-muted); line-height: 1.6; }
+    #empty-state p { font-size: 13px; color: var(--color-muted); line-height: 1.6; max-width: 42ch; }
 
     /* ── TEAM PANEL (shown when a team is selected) ── */
     #team-panel { display: none; }
@@ -575,7 +575,11 @@
     .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
     /* ── MAP ── */
-    #map { flex: 1; background: var(--color-bg); }
+    /* Wrapper is the positioned ancestor for the layer-controls overlay, so the
+       overlay always docks to the map itself — not to the page — on every
+       layout (this was the cause of it floating over the mobile sidebar). */
+    #map-wrapper { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+    #map { position: absolute; inset: 0; background: var(--color-bg); }
 
     .leaflet-container { background: #e4e9f0 !important; font-family: var(--font-body) !important; }
     .leaflet-control-zoom { border: 1px solid var(--color-border) !important; border-radius: 6px !important; overflow: hidden; }
@@ -601,9 +605,12 @@
     .popup-match strong { color: var(--color-text); }
 
     /* ── LAYER CONTROLS ── */
+    /* Positioned relative to #map-wrapper (see #map-wrapper above), so this
+       always sits in the map's own top-right corner regardless of viewport
+       size or where the map falls in the page layout. */
     #layer-controls {
       position: absolute;
-      top: 66px;
+      top: 12px;
       right: 12px;
       z-index: 900;
       display: flex;
@@ -632,20 +639,29 @@
       #main { flex-direction: column; }
 
       /* Map on top, fixed height */
-      #map { height: 45vh; flex: none; transition: height 0.15s ease; }
+      #map-wrapper { height: 42vh; flex: none; transition: height 0.15s ease; }
 
       /* Sidebar below, full width, remaining height */
       #sidebar {
         width: 100%;
-        height: calc(55vh - 52px);
+        height: calc(58vh - 52px);
         border-right: none;
         border-top: 2px solid var(--color-border);
       }
 
+      /* Shorter empty state so the default (nothing selected) view doesn't
+         leave a big dead gap above the legend on a phone-height sidebar */
+      #empty-state { min-height: 0; padding: 24px 24px; }
+
       /* My List / Travel don't need the map — give the list the full screen */
-      body.map-hidden-mobile #map { height: 0; min-height: 0; }
+      body.map-hidden-mobile #map-wrapper { height: 0; min-height: 0; }
       body.map-hidden-mobile #sidebar { height: calc(100vh - 52px); }
       body.map-hidden-mobile #layer-controls { display: none; }
+
+      /* Bigger touch targets for the zoom control (default Leaflet buttons
+         are ~26px, well under the ~44px minimum comfortable tap target) */
+      .leaflet-control-zoom a { width: 40px !important; height: 40px !important; line-height: 40px !important; font-size: 18px !important; }
+      .leaflet-top.leaflet-left { margin-top: 12px !important; margin-left: 12px !important; }
 
       /* Tighter header, but keep tabs comfortably tappable (≥ ~40px target) */
       #header { padding: 0 10px; }
@@ -666,8 +682,9 @@
       /* Prevent iOS auto-zoom on focus: inputs/selects need >= 16px font */
       #team-search, .city-planner-row select { font-size: 16px; }
 
-      /* Layer controls: keep in map area top-right */
-      #layer-controls { top: 58px; right: 8px; }
+      /* Layer controls: tighter inset on small screens (still anchored to
+         the map itself via #map-wrapper, not the page) */
+      #layer-controls { top: 8px; right: 8px; }
       .layer-btn { padding: 8px 10px; font-size: 11px; min-height: 36px; }
 
       /* Legend wraps tighter */
@@ -779,18 +796,20 @@
       </div>
 
     </aside>
-    <div id="map"></div>
+    <div id="map-wrapper">
+      <div id="map"></div>
+      <!-- Layer controls overlay — positioned relative to #map-wrapper so it
+           always docks to the map's own corner, on desktop and mobile alike -->
+      <div id="layer-controls">
+        <button class="layer-btn active" id="btn-venues">
+          <div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div>Venues
+        </button>
+        <button class="layer-btn active" id="btn-camps">
+          <div style="width:8px;height:8px;border-radius:50%;background:#008a49;flex-shrink:0"></div>Training Camps
+        </button>
+      </div>
+    </div>
   </div>
-</div>
-
-<!-- Layer controls overlay -->
-<div id="layer-controls">
-  <button class="layer-btn active" id="btn-venues">
-    <div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div>Venues
-  </button>
-  <button class="layer-btn active" id="btn-camps">
-    <div style="width:8px;height:8px;border-radius:50%;background:#008a49;flex-shrink:0"></div>Training Camps
-  </button>
 </div>
 
 <script src="data.js"></script>
@@ -1351,6 +1370,13 @@ function setView(view) {
   // On phones, the map only earns its space on Explore — My List and Travel
   // are list-driven, so give the sidebar the full screen there instead.
   document.body.classList.toggle('map-hidden-mobile', view !== 'explore');
+
+  // Leaflet sizes its tiles from the container's pixel dimensions at the
+  // moment it last checked — it has no way to know #map-wrapper's CSS
+  // height just changed (0 <-> 42vh) when switching tabs on mobile, so
+  // without this the map redraws blank/misaligned until the user drags it.
+  // Wait for the 0.15s CSS transition to finish before recalculating.
+  setTimeout(() => map.invalidateSize(), 180);
 
   if (view === 'explore') {
     if (activeTeamId) {
